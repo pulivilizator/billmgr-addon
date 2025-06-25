@@ -1,0 +1,14 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include requirements.txt
+include mypy.ini
+include ruff.toml
+
+recursive-include billmgr_addon/templates *
+recursive-include billmgr_addon/static *
+recursive-include billmgr_addon/xml_templates *
+
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .DS_Store 
