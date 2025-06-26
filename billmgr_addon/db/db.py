@@ -3,7 +3,18 @@
 import re
 from typing import Union
 
-import MySQLdb
+try:
+    import MySQLdb
+    MYSQL_AVAILABLE = True
+except ImportError:
+    try:
+        import pymysql as MySQLdb
+        MySQLdb.install_as_MySQLdb()
+        MYSQL_AVAILABLE = True
+    except ImportError:
+        MYSQL_AVAILABLE = False
+        MySQLdb = None
+
 from flask import current_app, g, appcontext_pushed
 from types import SimpleNamespace
 import logging
@@ -270,6 +281,9 @@ class DB:
         if self.connection:
             self.connection.close()
 
+        if not MYSQL_AVAILABLE:
+            raise ImportError("MySQL client not available. Install with: pip install billmgr-addon or pip install billmgr-addon[pymysql]")
+        
         try:
             self.connection = MySQLdb.connect(
                 host=db_config.host, db=db_config.database,

@@ -18,15 +18,65 @@ BILLmanager Addon Framework предоставляет готовый набор
 ### Из Git репозитория
 
 ```bash
-pip install git+https://github.com/billmanager/billmgr-addon.git
+# Основная версия с PyMySQL (рекомендуется для разработки)
+pip install "git+https://github.com/username/billmgr-addon.git[pymysql]"
+
+# С mysqlclient (для продакшена, требует системные библиотеки MySQL)
+pip install "git+https://github.com/username/billmgr-addon.git[mysqlclient]"
+
+# Минимальная установка (без MySQL драйверов)
+pip install git+https://github.com/username/billmgr-addon.git
+
+# Установка для разработки со всеми инструментами
+pip install "git+https://github.com/username/billmgr-addon.git[dev]"
+
+# Полная установка со всеми возможностями
+pip install "git+https://github.com/username/billmgr-addon.git[full]"
 ```
 
-### Для разработки
+### Установка конкретной версии
 
 ```bash
-git clone https://github.com/billmanager/billmgr-addon.git
+# Конкретная ветка
+pip install "git+https://github.com/username/billmgr-addon.git@dev[pymysql]"
+
+# Конкретный тег
+pip install "git+https://github.com/username/billmgr-addon.git@v0.1.0[pymysql]"
+
+# Конкретный коммит
+pip install "git+https://github.com/username/billmgr-addon.git@abc123[pymysql]"
+```
+
+### Локальная разработка
+
+```bash
+git clone https://github.com/username/billmgr-addon.git
 cd billmgr-addon
-pip install -e .
+python -m venv venv
+source venv/bin/activate
+pip install -e ".[dev,pymysql]"
+```
+
+### Установка через requirements.txt
+
+Для включения в файл зависимостей проекта:
+
+```txt
+# requirements.txt
+
+# Основная версия с PyMySQL
+git+https://github.com/username/billmgr-addon.git@main#egg=billmgr-addon[pymysql]
+
+# Конкретная версия
+git+https://github.com/username/billmgr-addon.git@v0.1.0#egg=billmgr-addon[pymysql]
+
+# С дополнительными зависимостями
+git+https://github.com/username/billmgr-addon.git#egg=billmgr-addon[pymysql,celery]
+```
+
+Затем установка:
+```bash
+pip install -r requirements.txt
 ```
 
 ## Быстрый старт
@@ -43,7 +93,12 @@ cd my-plugin
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -e .
+
+# Установка зависимостей проекта с PyMySQL (рекомендуется)
+pip install -e ".[pymysql]"
+
+# Альтернативно: установка с mysqlclient (требует системные библиотеки)
+pip install -e ".[mysqlclient]"
 ```
 
 ### 3. Конфигурация
@@ -208,14 +263,28 @@ login_manager.request_loader(load_billmgr_user)
 ### Дополнительные возможности
 
 ```bash
-# Поддержка Celery
-pip install billmgr-addon[celery]
+# Доступные extras для установки:
+
+# PyMySQL драйвер (Pure Python, простая установка)
+pip install "git+https://github.com/username/billmgr-addon.git[pymysql]"
+
+# mysqlclient драйвер (C-extension, быстрее, но требует системные библиотеки)
+pip install "git+https://github.com/username/billmgr-addon.git[mysqlclient]"
+
+# Поддержка Celery для фоновых задач
+pip install "git+https://github.com/username/billmgr-addon.git[celery]"
 
 # Поддержка WebSocket
-pip install billmgr-addon[websockets]
+pip install "git+https://github.com/username/billmgr-addon.git[websockets]"
 
-# Инструменты разработки
-pip install billmgr-addon[dev]
+# Инструменты разработки (mypy, ruff, pytest)
+pip install "git+https://github.com/username/billmgr-addon.git[dev]"
+
+# Полная установка со всеми возможностями
+pip install "git+https://github.com/username/billmgr-addon.git[full]"
+
+# Комбинирование extras
+pip install "git+https://github.com/username/billmgr-addon.git[pymysql,celery,dev]"
 ```
 
 ## Примеры
@@ -226,19 +295,6 @@ pip install billmgr-addon[dev]
 - `api-integration/` - интеграция с внешним API
 - `processing-module/` - модуль обработки услуг
 
-## Документация
-
-Полная документация доступна по адресу: [https://billmgr-addon.readthedocs.io](https://billmgr-addon.readthedocs.io)
-
-## Поддержка
-
-- **Issues**: [GitHub Issues](https://github.com/billmanager/billmgr-addon/issues)
-- **Документация**: [ReadTheDocs](https://billmgr-addon.readthedocs.io)
-- **Примеры**: [GitHub Examples](https://github.com/billmanager/billmgr-addon/tree/main/examples)
-
-## Лицензия
-
-MIT License. См. файл [LICENSE](LICENSE) для подробностей.
 
 ## Разработка
 
@@ -264,7 +320,3 @@ pytest
 ruff check .
 mypy .
 ```
-
-## Changelog
-
-См. файл [CHANGELOG.md](CHANGELOG.md) для истории изменений. 

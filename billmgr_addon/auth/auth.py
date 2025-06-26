@@ -3,7 +3,7 @@
 from typing import Iterable, Optional
 from collections import defaultdict
 
-from flask import current_app
+from flask import Request, current_app
 from flask_login import UserMixin
 from dataclasses import dataclass
 from time import time
