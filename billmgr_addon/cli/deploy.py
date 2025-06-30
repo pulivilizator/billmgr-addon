@@ -159,7 +159,7 @@ def build_xml(xml_path):
         
         builder = XMLBuilder(src_path=src_path, build_path=build_path)
         output_path = builder.build()
-        click.echo(f"✅ XML конфигурация собрана: {output_path}")
+        click.echo(f"XML конфигурация собрана: {output_path}")
         
     except Exception as e:
         raise click.ClickException(f"Ошибка сборки XML: {e}")

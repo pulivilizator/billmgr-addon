@@ -77,6 +77,19 @@ class MgrOkResponse(MgrResponse):
         super().__init__(xml_data)
 
 
+class MgrRedirectResponse(MgrResponse):
+    """Ответ с перенаправлением"""
+    
+    def __init__(self, redirect_type="form", redirect_target=""):
+        root = ET.Element("doc")
+        redirect_elem = ET.SubElement(root, "redirect")
+        redirect_elem.set("type", redirect_type)
+        redirect_elem.text = redirect_target
+        
+        xml_data = ET.tostring(root, encoding='unicode')
+        super().__init__(xml_data)
+
+
 # Вспомогательный класс для файлов
 class DownloadFileData:
     """Данные для скачивания файлов"""
@@ -93,5 +106,6 @@ __all__ = [
     'MgrUnknownErrorResponse',
     'MgrSuccessResponse',
     'MgrOkResponse',
+    'MgrRedirectResponse',
     'DownloadFileData'
 ]

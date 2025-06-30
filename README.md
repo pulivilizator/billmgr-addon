@@ -163,6 +163,47 @@ class MyService:
         pass
 ```
 
+### Расширение эндпоинтов для специфичных задач
+
+Если вашему плагину нужна дополнительная авторизация или обработка (например, проверка проектов, подписок), рекомендуется создавать собственные базовые классы:
+
+```python
+from billmgr_addon import MgrEndpoint, get_db, MgrErrorResponse
+
+class ProjectRequiredEndpoint(MgrEndpoint):
+    """Базовый класс для эндпоинтов, требующих активный проект"""
+    
+    async def _handle_request(self, mgr_request):
+        # Проверяем наличие проекта у пользователя
+        project_id = self._get_user_project(mgr_request.auth_user)
+        if not project_id:
+            return MgrErrorResponse("Project not found")
+        
+        # Добавляем project_id в запрос
+        mgr_request.project_id = project_id
+        
+        # Выполняем основную логику
+        return await super()._handle_request(mgr_request)
+    
+    def _get_user_project(self, user_id):
+        db = get_db('billmgr')
+        # Ваша логика получения проекта
+        return "project_123"
+
+class MyCloudEndpoint(ProjectRequiredEndpoint):
+    async def get(self, mgr_request):
+        # mgr_request.project_id уже доступен
+        return f"Project: {mgr_request.project_id}"
+```
+
+**Преимущества такого подхода:**
+- Полный контроль над логикой авторизации
+- Адаптация под конкретную схему БД
+- Обработка специфичных ошибок вашего API
+- Простота понимания и модификации
+
+
+
 ### Processing Module (Модуль обработки услуг)
 
 **Processing module** - это специальный тип плагина BILLmanager для автоматизации жизненного цикла услуг. Он позволяет интегрировать внешние системы (облачные платформы, API) с биллингом для автоматического управления услугами.

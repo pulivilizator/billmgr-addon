@@ -44,35 +44,19 @@ def _get_processing_module_classes():
     from .core.processing import (
         ProcessingModule,
         ProcessingModuleCommand,
-        FeaturesCommand,
         ServiceCommand,
         OpenCommand,
-        ResumeCommand,
-        SuspendCommand,
-        CloseCommand,
-        StartCommand,
-        StopCommand,
-        StatCommand,
-        ProcessingModuleResponse,
-        FeaturesResponse,
-        create_processing_module_app
+        ProcessingModuleResponse
     )
     return {
         'ProcessingModule': ProcessingModule,
         'ProcessingModuleCommand': ProcessingModuleCommand,
-        'FeaturesCommand': FeaturesCommand,
         'ServiceCommand': ServiceCommand,
         'OpenCommand': OpenCommand,
-        'ResumeCommand': ResumeCommand,
-        'SuspendCommand': SuspendCommand,
-        'CloseCommand': CloseCommand,
-        'StartCommand': StartCommand,
-        'StopCommand': StopCommand,
-        'StatCommand': StatCommand,
-        'ProcessingModuleResponse': ProcessingModuleResponse,
-        'FeaturesResponse': FeaturesResponse,
-        'create_processing_module_app': create_processing_module_app
+        'ProcessingModuleResponse': ProcessingModuleResponse
     }
+
+
 
 # UI компоненты
 def _get_ui_classes():
@@ -86,13 +70,15 @@ def _get_ui_classes():
 # Типы запросов и ответов
 def _get_request_response_classes():
     from .core.request_types import MgrRequest, CgiRequest
-    from .core.response import MgrResponse, MgrErrorResponse, MgrSuccessResponse
+    from .core.response import MgrResponse, MgrErrorResponse, MgrSuccessResponse, MgrOkResponse, MgrRedirectResponse
     return {
         'MgrRequest': MgrRequest,
         'CgiRequest': CgiRequest, 
         'MgrResponse': MgrResponse,
         'MgrErrorResponse': MgrErrorResponse,
-        'MgrSuccessResponse': MgrSuccessResponse
+        'MgrSuccessResponse': MgrSuccessResponse,
+        'MgrOkResponse': MgrOkResponse,
+        'MgrRedirectResponse': MgrRedirectResponse
     }
 
 # Работа с БД
@@ -128,6 +114,7 @@ class _LazyModule:
         self._request_response_classes = None
         self._processing_module_classes = None
 
+
     def __getattr__(self, name):
         # Пробуем найти в эндпоинтах
         if self._endpoint_classes is None:
@@ -153,6 +140,8 @@ class _LazyModule:
         if name in self._processing_module_classes:
             return self._processing_module_classes[name]
             
+
+            
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
@@ -173,22 +162,16 @@ MgrResponse = property(lambda self: _lazy.MgrResponse)
 MgrErrorResponse = property(lambda self: _lazy.MgrErrorResponse)
 MgrSuccessResponse = property(lambda self: _lazy.MgrSuccessResponse)
 MgrOkResponse = property(lambda self: _lazy.MgrOkResponse)
+MgrRedirectResponse = property(lambda self: _lazy.MgrRedirectResponse)
 
 # Processing Module классы
 ProcessingModule = property(lambda self: _lazy.ProcessingModule)
 ProcessingModuleCommand = property(lambda self: _lazy.ProcessingModuleCommand)
-FeaturesCommand = property(lambda self: _lazy.FeaturesCommand)
 ServiceCommand = property(lambda self: _lazy.ServiceCommand)
 OpenCommand = property(lambda self: _lazy.OpenCommand)
-ResumeCommand = property(lambda self: _lazy.ResumeCommand)
-SuspendCommand = property(lambda self: _lazy.SuspendCommand)
-CloseCommand = property(lambda self: _lazy.CloseCommand)
-StartCommand = property(lambda self: _lazy.StartCommand)
-StopCommand = property(lambda self: _lazy.StopCommand)
-StatCommand = property(lambda self: _lazy.StatCommand)
 ProcessingModuleResponse = property(lambda self: _lazy.ProcessingModuleResponse)
-FeaturesResponse = property(lambda self: _lazy.FeaturesResponse)
-create_processing_module_app = property(lambda self: _lazy.create_processing_module_app)
+
+
 
 # Версия библиотеки
 __version__ = '0.1.0'
@@ -215,18 +198,11 @@ __all__ = [
     # Processing Module
     'ProcessingModule',
     'ProcessingModuleCommand',
-    'FeaturesCommand',
     'ServiceCommand', 
     'OpenCommand',
-    'ResumeCommand',
-    'SuspendCommand',
-    'CloseCommand',
-    'StartCommand',
-    'StopCommand',
-    'StatCommand',
     'ProcessingModuleResponse',
-    'FeaturesResponse',
-    'create_processing_module_app',
+    
+
     
     # UI компоненты
     'MgrForm',
@@ -240,6 +216,7 @@ __all__ = [
     'MgrErrorResponse',
     'MgrSuccessResponse',
     'MgrOkResponse',
+    'MgrRedirectResponse',
     
     # БД
     'get_db',
