@@ -112,14 +112,28 @@ def install_processing_module(module_name: str):
 
 
 @main.command()
-def build_xml():
+@click.option('--xml-path', type=click.Path(exists=True, file_okay=False, path_type=Path), 
+              help='Путь к папке xml (по умолчанию ./xml)')
+def build_xml(xml_path):
     """Собрать XML файлы плагина"""
     from ..utils.xml_builder import XMLBuilder
     
-    click.echo("Сборка XML файлов...")
+    if xml_path:
+        click.echo(f"Сборка XML файлов из {xml_path}...")
+        # xml_path указывает на папку xml, src находится внутри неё
+        src_path = xml_path / 'src'
+        build_path = xml_path / 'build.xml'
+        
+        # Проверяем, что папка src существует
+        if not src_path.exists():
+            raise click.ClickException(f"Папка src не найдена в {xml_path}")
+    else:
+        click.echo("Сборка XML файлов...")
+        src_path = None  # Использовать значения по умолчанию
+        build_path = None
     
     try:
-        builder = XMLBuilder()
+        builder = XMLBuilder(src_path=src_path, build_path=build_path)
         output_path = builder.build()
         click.echo(f"✅ XML собран: {output_path}")
     except Exception as e:

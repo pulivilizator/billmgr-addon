@@ -22,7 +22,9 @@ def deploy():
 @deploy.command()
 @click.option('--plugin-name', required=True, help='Имя плагина')
 @click.option('--force', is_flag=True, help='Принудительная перезапись существующих файлов')
-def install(plugin_name, force):
+@click.option('--xml-path', type=click.Path(exists=True, file_okay=False, path_type=Path), 
+              help='Путь к папке xml (по умолчанию ./xml)')
+def install(plugin_name, force, xml_path):
     """Установить плагин в BILLmanager"""
     try:
         click.echo(f"Установка плагина {plugin_name}...")
@@ -32,10 +34,20 @@ def install(plugin_name, force):
             raise click.ClickException("Команда должна выполняться из корня проекта плагина")
         
         # Собираем XML
-        click.echo("Сборка XML конфигурации...")
-        build_xml_result = subprocess.run(['python', 'build_xml.py'], capture_output=True, text=True)
-        if build_xml_result.returncode != 0:
-            raise click.ClickException(f"Ошибка сборки XML: {build_xml_result.stderr}")
+        if xml_path:
+            click.echo(f"Сборка XML конфигурации из {xml_path}...")
+            src_path = xml_path / 'src'
+            build_path = xml_path / 'build.xml'
+            
+            if not src_path.exists():
+                raise click.ClickException(f"Папка src не найдена в {xml_path}")
+        else:
+            click.echo("Сборка XML конфигурации...")
+            src_path = None
+            build_path = None
+        
+        builder = XMLBuilder(src_path=src_path, build_path=build_path)
+        builder.build()
         
         # Создаем ссылки
         click.echo("Создание ссылок...")
@@ -122,22 +134,32 @@ def status(plugin_name):
 
 
 @deploy.command()
-def build_xml():
+@click.option('--xml-path', type=click.Path(exists=True, file_okay=False, path_type=Path), 
+              help='Путь к папке xml (по умолчанию ./xml)')
+def build_xml(xml_path):
     """Собрать XML конфигурацию"""
     try:
-        click.echo("Сборка XML конфигурации...")
-        
-        if not Path('build_xml.py').exists():
-            raise click.ClickException("Файл build_xml.py не найден в текущей директории")
-        
-        result = subprocess.run(['python', 'build_xml.py'], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            click.echo("XML конфигурация успешно собрана")
-            if result.stdout:
-                click.echo(result.stdout)
+        if xml_path:
+            click.echo(f"Сборка XML конфигурации из {xml_path}...")
         else:
-            raise click.ClickException(f"Ошибка сборки XML: {result.stderr}")
+            click.echo("Сборка XML конфигурации...")
+        
+        # Используем встроенный XMLBuilder вместо внешнего скрипта
+        from ..utils.xml_builder import XMLBuilder
+        
+        if xml_path:
+            src_path = xml_path / 'src'
+            build_path = xml_path / 'build.xml'
+            
+            if not src_path.exists():
+                raise click.ClickException(f"Папка src не найдена в {xml_path}")
+        else:
+            src_path = None
+            build_path = None
+        
+        builder = XMLBuilder(src_path=src_path, build_path=build_path)
+        output_path = builder.build()
+        click.echo(f"✅ XML конфигурация собрана: {output_path}")
         
     except Exception as e:
         raise click.ClickException(f"Ошибка сборки XML: {e}")
@@ -180,7 +202,9 @@ def dev_server(host, port, debug):
 @click.option('--install/--no-install', default=True, help='Установить плагин после деплоя')
 @click.option('--restart-billmgr/--no-restart-billmgr', default=False, help='Перезапустить BILLmanager после деплоя')
 @click.option('--dry-run', is_flag=True, help='Показать команды без выполнения')
-def remote_deploy(environment, plugin_name, config, backup, install, restart_billmgr, dry_run):
+@click.option('--xml-path', type=click.Path(exists=True, file_okay=False, path_type=Path), 
+              help='Путь к папке xml (по умолчанию ./xml)')
+def remote_deploy(environment, plugin_name, config, backup, install, restart_billmgr, dry_run, xml_path):
     """Деплой плагина на удаленный сервер"""
     try:
         click.echo(f"🚀 Удаленный деплой плагина '{plugin_name}' в окружение '{environment}'")
@@ -260,11 +284,24 @@ def remote_deploy(environment, plugin_name, config, backup, install, restart_bil
             subprocess.run(cleanup_cmd, shell=True)
         
         # 4. Сборка XML локально
-        click.echo("🔧 Сборка XML конфигурации...")
+        if xml_path:
+            click.echo(f"🔧 Сборка XML конфигурации из {xml_path}...")
+        else:
+            click.echo("🔧 Сборка XML конфигурации...")
+        
         if not dry_run:
-            build_result = subprocess.run(['python', 'build_xml.py'], capture_output=True, text=True)
-            if build_result.returncode != 0:
-                raise click.ClickException(f"Ошибка сборки XML: {build_result.stderr}")
+            if xml_path:
+                src_path = xml_path / 'src'
+                build_path = xml_path / 'build.xml'
+                
+                if not src_path.exists():
+                    raise click.ClickException(f"Папка src не найдена в {xml_path}")
+            else:
+                src_path = None
+                build_path = None
+            
+            builder = XMLBuilder(src_path=src_path, build_path=build_path)
+            builder.build()
         
         # 5. Синхронизация файлов
         click.echo("📦 Синхронизация файлов...")

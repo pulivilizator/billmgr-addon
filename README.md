@@ -223,10 +223,22 @@ billmgr-addon create-project my-plugin [--path=.] [--template=basic]
 ### Сборка XML
 
 ```bash
-billmgr-addon build-xml
+billmgr-addon build-xml [--xml-path PATH]
 ```
 
 Собирает XML файлы из `xml/src/` в `xml/build.xml`. Выполняется автоматически перед установкой.
+
+Опции:
+- `--xml-path` - путь к папке xml (по умолчанию `./xml`)
+
+Примеры:
+```bash
+# Сборка из стандартной папки ./xml/src
+billmgr-addon build-xml
+
+# Сборка из кастомной папки
+billmgr-addon build-xml --xml-path /path/to/my-xml-folder
+```
 
 ### Локальная установка плагина
 
@@ -270,10 +282,14 @@ my-plugin/
 ### Установка с дополнительными опциями
 
 ```bash
-sudo billmgr-addon deploy install --plugin-name my_plugin [--force]
+sudo billmgr-addon deploy install --plugin-name my_plugin [--force] [--xml-path PATH]
 ```
 
-Расширенная установка с возможностью принудительной перезаписи.
+Расширенная установка с возможностью принудительной перезаписи и указанием кастомного пути к XML файлам.
+
+Опции:
+- `--force` - принудительная перезапись существующих файлов
+- `--xml-path` - путь к папке xml (по умолчанию `./xml`)
 
 ### Удаление плагина
 
@@ -298,6 +314,14 @@ billmgr-addon deploy status --plugin-name my_plugin
 Плагин полностью установлен
 ```
 
+### Сборка XML в команде деплоя
+
+```bash
+billmgr-addon deploy build-xml [--xml-path PATH]
+```
+
+Альтернативная команда для сборки XML с теми же возможностями, что и основная команда `build-xml`.
+
 ### Сервер разработки
 
 ```bash
@@ -309,7 +333,7 @@ billmgr-addon deploy dev-server [--host=localhost] [--port=5000] [--debug]
 ### Удаленный деплой
 
 ```bash
-billmgr-addon deploy remote-deploy -e dev --plugin-name my_plugin [--config deploy.toml]
+billmgr-addon deploy remote-deploy -e dev --plugin-name my_plugin [--config deploy.toml] [--xml-path PATH]
 ```
 
 Выполняет полный деплой плагина на удаленный сервер:
@@ -326,6 +350,7 @@ billmgr-addon deploy remote-deploy -e dev --plugin-name my_plugin [--config depl
 - `--install/--no-install` - устанавливать ли плагин (по умолчанию да)  
 - `--restart-billmgr/--no-restart-billmgr` - перезапускать ли BILLmanager
 - `--dry-run` - показать команды без выполнения
+- `--xml-path` - путь к папке xml (по умолчанию `./xml`)
 
 **Конфигурация деплоя:**
 
