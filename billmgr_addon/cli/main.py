@@ -2,6 +2,7 @@
 
 import click
 import os
+import sys
 from pathlib import Path
 
 from ..scaffold import ProjectScaffold
@@ -32,12 +33,17 @@ def create_project(project_name: str, path: str, template: str):
         click.echo(f"✅ Проект '{project_name}' успешно создан!")
         click.echo(f"📁 Путь: {project_path.absolute()}")
         click.echo()
+        
+        plugin_name_norm = project_name.lower().replace('-', '_')
+
         click.echo("Следующие шаги:")
         click.echo(f"  cd {project_name}")
-        click.echo("  python -m venv venv")
-        click.echo("  source venv/bin/activate")
-        click.echo("  pip install -e .")
-        click.echo("  billmgr-addon install")
+        click.echo("  # Настройте config.toml")
+        click.echo(f"  sudo billmgr-addon deploy install --plugin-name {plugin_name_norm}")
+        click.echo()
+        click.echo("Для удаленного деплоя:")
+        click.echo("  # Настроить deploy.toml (пример в deploy.example.toml)")
+        click.echo(f"  billmgr-addon deploy remote-deploy -e dev --plugin-name {plugin_name_norm}")
     except Exception as e:
         click.echo(f"❌ Ошибка создания проекта: {e}")
         raise click.Abort()

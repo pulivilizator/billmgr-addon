@@ -319,7 +319,7 @@ billmgr-addon deploy remote-deploy -e dev --plugin-name my_plugin [--config depl
 - Устанавливает плагин в BILLmanager
 
 Доступные опции:
-- `--environment/-e` - окружение (dev, staging, prod)
+- `--environment/-e` - окружение (dev, prod)
 - `--plugin-name` - имя плагина для установки
 - `--config/-c` - путь к файлу конфигурации (по умолчанию deploy.toml)
 - `--backup/--no-backup` - создавать ли бэкап (по умолчанию да)

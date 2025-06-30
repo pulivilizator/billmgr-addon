@@ -8,13 +8,6 @@ app_folder = "/opt/my-plugin"
 public_folder = "/usr/local/mgr5/skins/userdata/my-plugin"
 ssh_options = "-A"
 
-[staging] 
-# Промежуточный сервер для тестирования
-server = "deploy@staging.example.com"
-app_folder = "/opt/my-plugin"  
-public_folder = "/usr/local/mgr5/skins/userdata/my-plugin"
-ssh_options = "-A -i ~/.ssh/staging_key"
-
 [prod]
 # Продакшен сервер
 server = "deploy@production.example.com"

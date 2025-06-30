@@ -74,7 +74,9 @@ class ProjectScaffold:
         return {
             # Основные файлы проекта
             'setup.py': self._get_setup_py_template(),
+            'README.md': self._get_readme_template(),
             'config.example.toml': self._get_config_template(),
+            'deploy.example.toml': self._get_deploy_config_template(),
             '.gitignore': self._get_gitignore_template(),
             
             # Python пакет
@@ -134,6 +136,25 @@ BILLMGR_API_URL = 'https://localhost:1500/billmgr'
 BILLMGR_API_USE_INTERFACE = ''
 '''
     
+    def _get_deploy_config_template(self) -> str:
+        return '''# Конфигурация удаленного деплоя
+# Скопируйте этот файл в deploy.toml и настройте под ваши сервера
+
+[dev]
+# Сервер для разработки
+server = "root@dev.example.com"
+app_folder = "/opt/${plugin_name}"
+public_folder = "/usr/local/mgr5/skins/userdata/${plugin_name}"
+ssh_options = "-A"
+
+[prod]
+# Продакшен сервер
+server = "deploy@production.example.com"
+app_folder = "/opt/${plugin_name}"
+public_folder = "/usr/local/mgr5/skins/userdata/${plugin_name}"
+ssh_options = "-A -i ~/.ssh/production_key"
+'''
+    
     def _get_readme_template(self) -> str:
         return '''# ${project_name}
 
@@ -149,12 +170,12 @@ BILLmanager плагин: ${project_name}
    ```
 3. Установите зависимости:
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
 4. Скопируйте config.toml из примера и настройте
 5. Установите плагин в BILLmanager:
    ```bash
-   billmgr-addon install --plugin-name ${plugin_name}
+   sudo billmgr-addon deploy install --plugin-name ${plugin_name}
    ```
 
 ## Разработка
@@ -169,6 +190,19 @@ pip install -e .
 ```bash
 billmgr-addon build-xml
 ```
+
+## Удаленный деплой
+
+1. Скопируйте deploy.toml из примера и настройте серверы
+2. Выполните деплой:
+   ```bash
+   billmgr-addon deploy remote-deploy -e dev --plugin-name ${plugin_name}
+   ```
+
+Доступные команды деплоя:
+- `remote-deploy` - полный деплой на удаленный сервер
+- `status` - проверка статуса установки
+- `uninstall` - удаление плагина
 '''
     
     def _get_gitignore_template(self) -> str:
@@ -207,6 +241,7 @@ ENV/
 
 # Project specific
 config.toml
+deploy.toml
 xml/build.xml
 logs/
 '''
