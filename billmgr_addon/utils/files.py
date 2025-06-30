@@ -184,4 +184,49 @@ def create_processing_module_symlinks(module_name: str) -> dict:
     return {
         'cli_link': create_processing_module_cli_link(module_name),
         'xml_link': create_processing_module_xml_symlink(module_name),
+    }
+
+
+def get_standard_paths(project_root: Union[Path, str, None] = None) -> dict:
+    """
+    Получить стандартные пути проекта
+    
+    Args:
+        project_root: Корневая директория проекта
+        
+    Returns:
+        dict: Словарь с путями проекта
+    """
+    if project_root is None:
+        project_root = cwd_path
+    else:
+        project_root = Path(project_root)
+    
+    return {
+        'cwd_path': project_root,
+        'interpreter_path': project_root / "venv/bin/python3",
+        'config_path': project_root / 'config.toml',
+        'public_path': project_root / 'public',
+        'xml_path': project_root / 'xml',
+        'cgi_app_path': project_root / 'cgi.py',
+        'cli_app_path': project_root / 'cli.py',
+        'xml_build_path': project_root / 'xml/build.xml',
+        'processing_module_cli_app_path': project_root / 'processing_module_cli.py',
+        'processing_module_xml_path': project_root / 'xml/processing_module.xml',
+    }
+
+
+def get_mgr_paths() -> dict:
+    """
+    Получить пути BILLmanager
+    
+    Returns:
+        dict: Словарь с путями BILLmanager
+    """
+    return {
+        'mgr_path': mgr_path,
+        'mgr_plugin_handlers_path': mgr_plugin_handlers_path,
+        'mgr_cgi_handlers_path': mgr_cgi_handlers_path,
+        'mgr_processing_module_scripts_path': mgr_processing_module_scripts_path,
+        'mgr_xml_path': mgr_xml_path,
     } 

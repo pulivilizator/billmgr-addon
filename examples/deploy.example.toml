@@ -1,0 +1,23 @@
+# Конфигурация удаленного деплоя
+# Скопируйте этот файл в корень вашего проекта как deploy.toml и настройте под ваши сервера
+
+[dev]
+# Сервер для разработки
+server = "root@dev.example.com"
+app_folder = "/opt/my-plugin"
+public_folder = "/usr/local/mgr5/skins/userdata/my-plugin"
+ssh_options = "-A"
+
+[staging] 
+# Промежуточный сервер для тестирования
+server = "deploy@staging.example.com"
+app_folder = "/opt/my-plugin"  
+public_folder = "/usr/local/mgr5/skins/userdata/my-plugin"
+ssh_options = "-A -i ~/.ssh/staging_key"
+
+[prod]
+# Продакшен сервер
+server = "deploy@production.example.com"
+app_folder = "/opt/my-plugin"
+public_folder = "/usr/local/mgr5/skins/userdata/my-plugin"
+ssh_options = "-A -i ~/.ssh/production_key" 

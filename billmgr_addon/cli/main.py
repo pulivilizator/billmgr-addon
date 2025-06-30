@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ..scaffold import ProjectScaffold
 from ..utils.files import create_plugin_symlinks, create_processing_module_symlinks
+from .deploy import deploy as deploy_commands
 
 
 @click.group()
@@ -120,20 +121,8 @@ def build_xml():
         raise click.Abort()
 
 
-@main.command()
-@click.option('--host', default='localhost', help='Хост для развертывания')
-@click.option('--user', default='root', help='Пользователь SSH')
-@click.option('--path', required=True, help='Путь к проекту на сервере')
-def deploy(host: str, user: str, path: str):
-    """Развернуть проект на сервере"""
-    click.echo(f"Развертывание на {user}@{host}:{path}...")
-    
-    try:
-        # Здесь будет логика развертывания
-        click.echo("🚧 Функция развертывания будет реализована позже")
-    except Exception as e:
-        click.echo(f"❌ Ошибка развертывания: {e}")
-        raise click.Abort()
+# Добавляем группу команд деплоя
+main.add_command(deploy_commands)
 
 
 if __name__ == '__main__':

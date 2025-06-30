@@ -14,6 +14,17 @@ from .files import (
 from .xml_builder import XMLBuilder
 from .logging import setup_logger
 from .serialization import CustomJSONEncoder
+from .billmgr_api import (
+    BillmgrAPI,
+    BillmgrAPIResponse,
+    BillmgrError,
+    BillmgrRequestError,
+    BillmgrApiError,
+    KeepAliveRequest,
+    AccountDiscountinfoRequest,
+    get_billmgr_api_as_current_user,
+    get_billmgr_api_as_config_user,
+)
 
 __all__ = [
     # Пути
@@ -34,4 +45,15 @@ __all__ = [
     
     # Сериализация
     'CustomJSONEncoder',
+    
+    # API BILLmanager
+    'BillmgrAPI',
+    'BillmgrAPIResponse',
+    'BillmgrError',
+    'BillmgrRequestError',
+    'BillmgrApiError',
+    'KeepAliveRequest',
+    'AccountDiscountinfoRequest',
+    'get_billmgr_api_as_current_user',
+    'get_billmgr_api_as_config_user',
 ] 

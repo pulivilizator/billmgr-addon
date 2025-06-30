@@ -74,9 +74,7 @@ class ProjectScaffold:
         return {
             # Основные файлы проекта
             'setup.py': self._get_setup_py_template(),
-            'requirements.txt': self._get_requirements_template(),
             'config.example.toml': self._get_config_template(),
-            'README.md': self._get_readme_template(),
             '.gitignore': self._get_gitignore_template(),
             
             # Python пакет
@@ -95,6 +93,7 @@ class ProjectScaffold:
             'cgi.py': self._get_cgi_template(),
             'cli.py': self._get_cli_template(),
             'wsgi.py': self._get_wsgi_template(),
+            'build_xml.py': self._get_build_xml_template(),
             
             # Тесты
             'tests/__init__.py': '',
@@ -227,25 +226,33 @@ __all__ = ['endpoints']
     def _get_app_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
+"""
+Фабрики Flask приложений для ${project_name}
+"""
+
 from billmgr_addon import create_app, create_cgi_app, create_cli_app
 from .endpoints import endpoints
 
 
-def create_plugin_app():
-    """Создать Flask приложение для плагина"""
+def create_cgi_app():
+    """Создать CGI приложение для плагина"""
+    return create_cgi_app(endpoints)
+
+
+def create_cli_app():
+    """Создать CLI приложение для плагина"""  
+    return create_cli_app()
+
+
+def create_app():
+    """Создать основное Flask приложение для плагина"""
     app = create_app()
     # Здесь можно добавить дополнительную конфигурацию
     return app
 
 
-def create_plugin_cgi_app():
-    """Создать CGI приложение для плагина"""
-    return create_cgi_app(endpoints)
-
-
-def create_plugin_cli_app():
-    """Создать CLI приложение для плагина"""
-    return create_cli_app()
+# Экспорт для обратной совместимости
+app = create_cgi_app()
 '''
     
     def _get_endpoints_init_template(self) -> str:
@@ -361,32 +368,97 @@ class ExampleService:
 '''
     
     def _get_cgi_template(self) -> str:
-        return '''#!/usr/bin/env python
+        return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ${plugin_name}.app import create_plugin_cgi_app
+"""
+CGI интерфейс для ${project_name}
+"""
+
+import sys
+from pathlib import Path
+
+# Добавляем текущую директорию в Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Используем универсальный CGI обработчик
+from billmgr_addon.cgi import main
 
 if __name__ == '__main__':
-    app = create_plugin_cgi_app()
-    # CGI логика обработки будет в billmgr_addon
+    main()
 '''
     
     def _get_cli_template(self) -> str:
-        return '''#!/usr/bin/env python
+        return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ${plugin_name}.app import create_plugin_cli_app
+"""
+CLI интерфейс для ${project_name}
+"""
+
+import sys
+from pathlib import Path
+
+# Добавляем текущую директорию в Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Используем универсальный CLI обработчик
+from billmgr_addon.cli import main
 
 if __name__ == "__main__":
-    app = create_plugin_cli_app()
-    with app.app_context():
-        app.cli.main()
+    main()
 '''
     
     def _get_wsgi_template(self) -> str:
-        return '''from ${plugin_name}.app import create_plugin_app
+        return '''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-app = create_plugin_app()
+"""
+WSGI интерфейс для ${project_name}
+"""
+
+from pathlib import Path
+from billmgr_addon import create_wsgi_app
+
+# Создаем WSGI приложение
+# Адаптер автоматически найдет и загрузит эндпоинты из ${plugin_name}
+app = create_wsgi_app(
+    plugin_name='${plugin_name}',
+    plugin_path=Path(__file__).parent,
+    config_path=Path(__file__).parent / 'config.toml'
+)
+
+# Для запуска через Gunicorn:
+# gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
+
+# Для запуска через uWSGI:
+# uwsgi --http :8000 --wsgi-file wsgi.py --callable app --processes 4
+
+# Для разработки можно использовать встроенный сервер Flask:
+if __name__ == '__main__':
+    flask_app = app.create_app()
+    flask_app.run(debug=True, port=8000)
+'''
+    
+    def _get_build_xml_template(self) -> str:
+        return '''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Сборщик XML конфигурации для ${project_name}
+"""
+
+import sys
+from pathlib import Path
+
+# Добавляем текущую директорию в Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Используем универсальный сборщик XML
+from billmgr_addon.build_xml import main
+
+if __name__ == '__main__':
+    main()
 '''
     
     def _get_test_template(self) -> str:
