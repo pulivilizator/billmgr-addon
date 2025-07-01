@@ -1,109 +1,104 @@
 # -*- coding: utf-8 -*-
 
-import os
-from pathlib import Path
-from typing import Dict, Any
 import string
+from pathlib import Path
+from typing import Dict
 
 
 class ProjectScaffold:
     """
     Генератор шаблонов проектов BILLmanager плагинов
     """
-    
-    def __init__(self, project_name: str, project_path: Path, template: str = 'basic'):
+
+    def __init__(self, project_name: str, project_path: Path, template: str = "basic"):
         self.project_name = project_name
         self.project_path = Path(project_path)
         self.template = template
-        
+
         # Переменные для шаблонов
         self.template_vars = {
-            'project_name': project_name,
-            'plugin_name': project_name.lower().replace('-', '_'),
-            'class_name': self._to_class_name(project_name),
+            "project_name": project_name,
+            "plugin_name": project_name.lower().replace("-", "_"),
+            "class_name": self._to_class_name(project_name),
         }
-    
+
     def _to_class_name(self, name: str) -> str:
         """Преобразовать имя в CamelCase"""
-        return ''.join(word.capitalize() for word in name.replace('-', '_').split('_'))
-    
+        return "".join(word.capitalize() for word in name.replace("-", "_").split("_"))
+
     def create(self) -> None:
         """Создать проект из шаблона"""
         if self.project_path.exists():
             raise ValueError(f"Директория {self.project_path} уже существует")
-        
+
         # Создаем структуру директорий
         self._create_directories()
-        
+
         # Создаем файлы из шаблонов
         self._create_files()
-        
+
         print(f"Проект {self.project_name} создан в {self.project_path}")
-    
+
     def _create_directories(self) -> None:
         """Создать структуру директорий"""
         dirs = [
             self.project_path,
-            self.project_path / self.template_vars['plugin_name'],
-            self.project_path / self.template_vars['plugin_name'] / 'endpoints',
-            self.project_path / self.template_vars['plugin_name'] / 'services', 
-            self.project_path / 'xml' / 'src',
-            self.project_path / 'public',
-            self.project_path / 'tests',
+            self.project_path / self.template_vars["plugin_name"],
+            self.project_path / self.template_vars["plugin_name"] / "endpoints",
+            self.project_path / self.template_vars["plugin_name"] / "services",
+            self.project_path / "xml" / "src",
+            self.project_path / "public",
+            self.project_path / "tests",
         ]
-        
+
         for dir_path in dirs:
             dir_path.mkdir(parents=True, exist_ok=True)
-    
+
     def _create_files(self) -> None:
         """Создать файлы из шаблонов"""
         files = self._get_template_files()
-        
+
         for file_path, content in files.items():
             full_path = self.project_path / file_path
             full_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Подставляем переменные в шаблон
             rendered_content = string.Template(content).safe_substitute(self.template_vars)
-            
-            with open(full_path, 'w', encoding='utf-8') as f:
+
+            with open(full_path, "w", encoding="utf-8") as f:
                 f.write(rendered_content)
-    
+
     def _get_template_files(self) -> Dict[str, str]:
         """Получить список файлов шаблона"""
         return {
             # Основные файлы проекта
-            'setup.py': self._get_setup_py_template(),
-            'README.md': self._get_readme_template(),
-            'config.example.toml': self._get_config_template(),
-            'deploy.example.toml': self._get_deploy_config_template(),
-            '.gitignore': self._get_gitignore_template(),
-            
+            "setup.py": self._get_setup_py_template(),
+            "README.md": self._get_readme_template(),
+            "config.example.toml": self._get_config_template(),
+            "deploy.example.toml": self._get_deploy_config_template(),
+            ".gitignore": self._get_gitignore_template(),
             # Python пакет
-            f'{self.template_vars["plugin_name"]}/__init__.py': self._get_main_init_template(),
-            f'{self.template_vars["plugin_name"]}/app.py': self._get_app_template(),
-            f'{self.template_vars["plugin_name"]}/endpoints/__init__.py': self._get_endpoints_init_template(),
-            f'{self.template_vars["plugin_name"]}/endpoints/example.py': self._get_example_endpoint_template(),
-            f'{self.template_vars["plugin_name"]}/services/__init__.py': '',
-            f'{self.template_vars["plugin_name"]}/services/example.py': self._get_example_service_template(),
-            
+            f"{self.template_vars['plugin_name']}/__init__.py": self._get_main_init_template(),
+            f"{self.template_vars['plugin_name']}/app.py": self._get_app_template(),
+            f"{self.template_vars['plugin_name']}/endpoints/__init__.py": self._get_endpoints_init_template(),
+            f"{self.template_vars['plugin_name']}/endpoints/example.py": self._get_example_endpoint_template(),
+            f"{self.template_vars['plugin_name']}/services/__init__.py": "",
+            f"{self.template_vars['plugin_name']}/services/example.py": self._get_example_service_template(),
             # XML файлы
-            'xml/src/main.xml': self._get_main_xml_template(),
-            'xml/src/example_list.xml': self._get_example_list_xml_template(),
-            
+            "xml/src/main.xml": self._get_main_xml_template(),
+            "xml/src/example_list.xml": self._get_example_list_xml_template(),
             # Точки входа
-            'cgi.py': self._get_cgi_template(),
-            'cli.py': self._get_cli_template(),
-            'wsgi.py': self._get_wsgi_template(),
-            'build_xml.py': self._get_build_xml_template(),
-            
+            "cgi.py": self._get_cgi_template(),
+            "cli.py": self._get_cli_template(),
+            "wsgi.py": self._get_wsgi_template(),
+            "build_xml.py": self._get_build_xml_template(),
             # Тесты
-            'tests/__init__.py': '',
-            'tests/test_example.py': self._get_test_template(),
+            "tests/__init__.py": "",
+            "tests/test_example.py": self._get_test_template(),
         }
-    
+
     def _get_setup_py_template(self) -> str:
-        return '''#!/usr/bin/env python3
+        return """#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
@@ -123,21 +118,21 @@ setup(
         ],
     },
 )
-'''
-    
+"""
+
     def _get_requirements_template(self) -> str:
-        return '''billmgr-addon>=0.1.0
-'''
-    
+        return """billmgr-addon>=0.1.0
+"""
+
     def _get_config_template(self) -> str:
-        return '''DEBUG = false
+        return """DEBUG = false
 FORWARDED_SECRET = 'SECRET_FROM_BILLMGR_CONF'
 BILLMGR_API_URL = 'https://localhost:1500/billmgr'
 BILLMGR_API_USE_INTERFACE = ''
-'''
-    
+"""
+
     def _get_deploy_config_template(self) -> str:
-        return '''# Конфигурация удаленного деплоя
+        return """# Конфигурация удаленного деплоя
 # Скопируйте этот файл в deploy.toml и настройте под ваши сервера
 
 [dev]
@@ -153,10 +148,10 @@ server = "deploy@production.example.com"
 app_folder = "/opt/${plugin_name}"
 public_folder = "/usr/local/mgr5/skins/userdata/${plugin_name}"
 ssh_options = "-A -i ~/.ssh/production_key"
-'''
-    
+"""
+
     def _get_readme_template(self) -> str:
-        return '''# ${project_name}
+        return """# ${project_name}
 
 BILLmanager плагин: ${project_name}
 
@@ -203,10 +198,10 @@ billmgr-addon build-xml
 - `remote-deploy` - полный деплой на удаленный сервер
 - `status` - проверка статуса установки
 - `uninstall` - удаление плагина
-'''
-    
+"""
+
     def _get_gitignore_template(self) -> str:
-        return '''# Python
+        return """# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -244,8 +239,8 @@ config.toml
 deploy.toml
 xml/build.xml
 logs/
-'''
-    
+"""
+
     def _get_main_init_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 """
@@ -257,7 +252,7 @@ from .endpoints import endpoints
 __version__ = '0.1.0'
 __all__ = ['endpoints']
 '''
-    
+
     def _get_app_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
@@ -289,9 +284,9 @@ def create_app():
 # Экспорт для обратной совместимости
 app = create_cgi_app()
 '''
-    
+
     def _get_endpoints_init_template(self) -> str:
-        return '''# -*- coding: utf-8 -*-
+        return """# -*- coding: utf-8 -*-
 
 from .example import ExampleList
 
@@ -299,8 +294,8 @@ from .example import ExampleList
 endpoints = [
     ExampleList("example.list"),
 ]
-'''
-    
+"""
+
     def _get_example_endpoint_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
@@ -322,7 +317,7 @@ class ExampleList(ListEndpoint):
         mgr_list.set_data_rows(sample_data)
         return mgr_list
 '''
-    
+
     def _get_example_service_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
@@ -343,9 +338,9 @@ class ExampleService:
         """Создать новый элемент"""
         return {"id": 3, "name": name, "status": "active"}
 '''
-    
+
     def _get_main_xml_template(self) -> str:
-        return '''<?xml version="1.0" encoding="UTF-8"?>
+        return """<?xml version="1.0" encoding="UTF-8"?>
 <mgrdata>
     <handler name="${plugin_name}" type="xml">
         <func name="example.list" />
@@ -372,10 +367,10 @@ class ExampleService:
         </messages>
     </lang>
 </mgrdata>
-'''
-    
+"""
+
     def _get_example_list_xml_template(self) -> str:
-        return '''<?xml version="1.0" encoding="UTF-8"?>
+        return """<?xml version="1.0" encoding="UTF-8"?>
 <mgrdata>
     <metadata name="example.list" type="list" key="id" keyname="name" mgr="billmgr" level="user">
         <coldata>
@@ -400,8 +395,8 @@ class ExampleService:
         </messages>
     </lang>
 </mgrdata>
-'''
-    
+"""
+
     def _get_cgi_template(self) -> str:
         return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -422,7 +417,7 @@ from billmgr_addon.cgi import main
 if __name__ == '__main__':
     main()
 '''
-    
+
     def _get_cli_template(self) -> str:
         return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -443,7 +438,7 @@ from billmgr_addon.cli import main
 if __name__ == "__main__":
     main()
 '''
-    
+
     def _get_wsgi_template(self) -> str:
         return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -474,7 +469,7 @@ if __name__ == '__main__':
     flask_app = app.create_app()
     flask_app.run(debug=True, port=8000)
 '''
-    
+
     def _get_build_xml_template(self) -> str:
         return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -495,7 +490,7 @@ from billmgr_addon.build_xml import main
 if __name__ == '__main__':
     main()
 '''
-    
+
     def _get_test_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
@@ -519,4 +514,4 @@ def test_create_item():
     
     assert item['name'] == 'Новый элемент'
     assert item['status'] == 'active'
-''' 
+'''

@@ -3,9 +3,9 @@
 Модуль авторизации для BILLmanager
 """
 
-from .auth import load_billmgr_user, User
+from .auth import User, load_billmgr_user
 
 __all__ = [
-    'load_billmgr_user',
-    'User',
-] 
+    "load_billmgr_user",
+    "User",
+]

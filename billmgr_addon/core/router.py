@@ -1,27 +1,24 @@
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
-from flask import Flask, current_app, request, g, Response
 import logging
-from typing import List, Dict, Optional, Iterable
 from abc import ABC, abstractmethod
-import os
-import urllib.parse
+from typing import Iterable, List, Optional
 
+from flask import Flask, Response, current_app, request
 from flask_login import current_user
 
-from .request_types import MgrRequest, CgiRequest
-from .response import MgrResponse, MgrUnknownErrorResponse, MgrErrorResponse
-from .ui import MgrUI, MgrError, MgrForm, MgrList
-import asyncio
+from .request_types import CgiRequest, MgrRequest
+from .response import MgrErrorResponse, MgrUnknownErrorResponse
+from .ui import MgrForm, MgrList
 
 
 class MgrRouter:
     """
     Основная система маршрутизации для BILLmanager плагинов
-    
+
     Обрабатывает как MGR запросы (через события), так и CGI запросы.
     """
-    
+
     def __init__(self, app: Flask, endpoints: List["Endpoint"]):
         self.app = app
         logging.debug("######## MgrRouter __init__")
@@ -63,15 +60,15 @@ class MgrRouter:
 
             mgr_request = MgrRequest(request.environ)
             logging.debug(f"request.remote_addr  {request.remote_addr}")
-            
+
             if endpoint.__class__.init_user_api:
                 mgr_request.init_user_api(
-                    current_app.config.get('BILLMGR_API_URL'),
-                    interface=current_app.config.get('BILLMGR_API_USE_INTERFACE'),
+                    current_app.config.get("BILLMGR_API_URL"),
+                    interface=current_app.config.get("BILLMGR_API_USE_INTERFACE"),
                     default_remote_address=request.remote_addr,
-                    default_forwarded_secret=current_app.config.get('FORWARDED_SECRET')
+                    default_forwarded_secret=current_app.config.get("FORWARDED_SECRET"),
                 )
-    
+
             logging.debug(f"mgr_request.xml_input {mgr_request.xml_input}")
             logging.debug(f"mgr_request.params {mgr_request.params}")
             logging.debug(f"mgr_request.environ {mgr_request.environ}")
@@ -81,7 +78,9 @@ class MgrRouter:
         cgi_request = CgiRequest(request=request)
         method = request.method
         func_name = cgi_request.func
-        logging.debug(f"cgi request: func - {func_name}, method - {method}, params - {repr(cgi_request)}")
+        logging.debug(
+            f"cgi request: func - {func_name}, method - {method}, params - {repr(cgi_request)}"
+        )
 
         if func_name:
             endpoint = self.cgi_endpoints.get(func_name, CgiFallbackEndpoint())
@@ -92,7 +91,7 @@ class MgrRouter:
 
 class Endpoint(ABC):
     """Базовый класс для всех эндпоинтов"""
-    
+
     def __init__(self, name: str):
         self.name = name
 
@@ -103,7 +102,7 @@ class Endpoint(ABC):
 
 class CgiEndpoint(ABC):
     """Базовый класс для CGI эндпоинтов"""
-    
+
     auth_level: Optional[int] = None
     roles_required: Optional[Iterable] = None
 
@@ -112,7 +111,9 @@ class CgiEndpoint(ABC):
 
     async def handle_request(self, cgi_request: CgiRequest) -> Response:
         user = current_user
-        if (self.auth_level is None or self.auth_level == user.auth_level) and user.has_roles(self.roles_required):
+        if (self.auth_level is None or self.auth_level == user.auth_level) and user.has_roles(
+            self.roles_required
+        ):
             cgi_request.user = user
             return await self._handle_request(cgi_request)
 
@@ -125,7 +126,7 @@ class CgiEndpoint(ABC):
 
 class CgiFallbackEndpoint(CgiEndpoint):
     """Fallback эндпоинт для неизвестных CGI запросов"""
-    
+
     def __init__(self):
         super().__init__(None)
 
@@ -135,7 +136,7 @@ class CgiFallbackEndpoint(CgiEndpoint):
 
 class MgrEndpoint(ABC):
     """Базовый класс для MGR эндпоинтов"""
-    
+
     auth_level: Optional[int] = None
     init_user_api: bool = True
 
@@ -164,7 +165,7 @@ class MgrEndpoint(ABC):
         """Внутренняя обработка запроса"""
         action_type = self._get_action_type(mgr_request)
         action_handler = self._get_action_handler(action_type)
-        
+
         if action_handler:
             return await action_handler(mgr_request)
         else:
@@ -175,19 +176,19 @@ class MgrEndpoint(ABC):
 
     @staticmethod
     def _get_action_type(mgr_request: MgrRequest):
-        return mgr_request.params.get('action', 'get')
+        return mgr_request.params.get("action", "get")
 
     def _get_action_handler(self, action_type: str):
         """Получить обработчик для типа действия"""
         handler_map = {
-            'get': self._handle_get,
+            "get": self._handle_get,
         }
         return handler_map.get(action_type)
 
 
 class MgrFallbackEndpoint(MgrEndpoint):
     """Fallback эндпоинт для неизвестных MGR запросов"""
-    
+
     def __init__(self):
         super().__init__(None)
 
@@ -197,12 +198,13 @@ class MgrFallbackEndpoint(MgrEndpoint):
 
 class ActionEndpoint(MgrEndpoint):
     """Эндпоинт для действий"""
+
     pass
 
 
 class ListEndpoint(MgrEndpoint):
     """Эндпоинт для списков"""
-    
+
     use_parent_data_from_request = False
 
     @abstractmethod
@@ -218,7 +220,7 @@ class ListEndpoint(MgrEndpoint):
 
 class FormEndpoint(MgrEndpoint):
     """Эндпоинт для форм"""
-    
+
     use_parent_data_from_request = False
 
     @abstractmethod
@@ -237,21 +239,21 @@ class FormEndpoint(MgrEndpoint):
 
     @staticmethod
     def _get_action_type(mgr_request: MgrRequest):
-        if 'setvalues' in mgr_request.params:
-            return 'setvalues'
-        elif 'sok' in mgr_request.params and 'elid' in mgr_request.params:
-            return 'edit'
-        elif 'sok' in mgr_request.params:
-            return 'new'
+        if "setvalues" in mgr_request.params:
+            return "setvalues"
+        elif "sok" in mgr_request.params and "elid" in mgr_request.params:
+            return "edit"
+        elif "sok" in mgr_request.params:
+            return "new"
         else:
-            return 'get'
+            return "get"
 
     def _get_action_handler(self, action_type: str):
         handler_map = {
-            'get': self._handle_get,
-            'setvalues': self._handle_setvalues,
-            'new': self._handle_new,
-            'edit': self._handle_edit,
+            "get": self._handle_get,
+            "setvalues": self._handle_setvalues,
+            "new": self._handle_new,
+            "edit": self._handle_edit,
         }
         return handler_map.get(action_type)
 
@@ -273,13 +275,13 @@ class FormEndpoint(MgrEndpoint):
 
 
 __all__ = [
-    'MgrRouter',
-    'Endpoint',
-    'CgiEndpoint',
-    'MgrEndpoint', 
-    'ActionEndpoint',
-    'ListEndpoint',
-    'FormEndpoint',
-    'CgiFallbackEndpoint',
-    'MgrFallbackEndpoint'
+    "MgrRouter",
+    "Endpoint",
+    "CgiEndpoint",
+    "MgrEndpoint",
+    "ActionEndpoint",
+    "ListEndpoint",
+    "FormEndpoint",
+    "CgiFallbackEndpoint",
+    "MgrFallbackEndpoint",
 ]

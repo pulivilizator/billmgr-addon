@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 # type: ignore
 
-import httpx
-from dataclasses import dataclass
-from flask import request, current_app
-from flask_login import current_user
 import ipaddress
-from typing import List, Union, Optional, Type
-import ssl
 import json
+import ssl
+from dataclasses import dataclass
+from typing import Optional, Union
+
+import httpx
+from flask import current_app, request
+from flask_login import current_user
+
 from ..utils.logging import setup_logger
-from ..utils.serialization import CustomJSONEncoder
 
 # Настройка логгера
 logger = setup_logger(__name__)
@@ -18,6 +19,7 @@ logger = setup_logger(__name__)
 
 class BillmgrError(Exception):
     """Базовая ошибка API BILLmanager"""
+
     def __init__(self, message, original_exception=None):
         self.message = message
         self.original_exception = original_exception
@@ -26,35 +28,39 @@ class BillmgrError(Exception):
         if self.message:
             return self.message
         else:
-            return f'{self.__class__}: error occured'
+            return f"{self.__class__}: error occured"
 
 
 class BillmgrRequestError(BillmgrError):
     """Ошибка HTTP запроса к API"""
+
     pass
 
 
 class BillmgrApiError(BillmgrError):
     """Ошибка ответа API"""
+
     pass
 
 
 def get_billmgr_api_as_current_user():
     """
     Получить API клиент для текущего пользователя
-    
+
     Returns:
         BillmgrAPI: Клиент API для текущего пользователя
     """
-    ip_address = ipaddress.ip_address(str(request.headers.get('X-Forwarded-For', request.remote_addr)))
+    ip_address = ipaddress.ip_address(
+        str(request.headers.get("X-Forwarded-For", request.remote_addr))
+    )
     billmgr_api = BillmgrAPI(
-        url=current_app.config.get('BILLMGR_API_URL'),
-        interface=current_app.config.get('BILLMGR_API_USE_INTERFACE'),
-        cookies={'billmgrses5': current_user.session_id},
+        url=current_app.config.get("BILLMGR_API_URL"),
+        interface=current_app.config.get("BILLMGR_API_USE_INTERFACE"),
+        cookies={"billmgrses5": current_user.session_id},
         headers={
-            'X-Forwarded-For': str(ip_address),
-            'X-Forwarded-Secret': current_app.config.get('FORWARDED_SECRET')
-        }
+            "X-Forwarded-For": str(ip_address),
+            "X-Forwarded-Secret": current_app.config.get("FORWARDED_SECRET"),
+        },
     )
     return billmgr_api
 
@@ -62,17 +68,17 @@ def get_billmgr_api_as_current_user():
 def get_billmgr_api_as_config_user():
     """
     Получить API клиент для пользователя из конфигурации
-    
+
     Returns:
         BillmgrAPI: Клиент API для пользователя из конфига
     """
     billmgr_api = BillmgrAPI(
         auth_info=[
-            current_app.config.get('BILLMGR_API_USER'),
-            current_app.config.get('BILLMGR_API_PASSWORD')
+            current_app.config.get("BILLMGR_API_USER"),
+            current_app.config.get("BILLMGR_API_PASSWORD"),
         ],
-        url=current_app.config.get('BILLMGR_API_URL'),
-        interface=current_app.config.get('BILLMGR_API_USE_INTERFACE')
+        url=current_app.config.get("BILLMGR_API_URL"),
+        interface=current_app.config.get("BILLMGR_API_USE_INTERFACE"),
     )
     return billmgr_api
 
@@ -84,13 +90,13 @@ class BillmgrAPIResponse:
         if doc:
             self._doc = doc
         else:
-            raise BillmgrApiError('Invalid response data format')
+            raise BillmgrApiError("Invalid response data format")
 
         self.default_format = default_format
         self.result_type = "item"
         if result_type is not None:
             self.result_type = result_type
-    
+
     @property
     def doc(self):
         """Получить документ ответа"""
@@ -99,12 +105,12 @@ class BillmgrAPIResponse:
     def _format_value(self, name, value, formatter_type=None):
         """
         Отформатировать значение согласно указанному форматтеру
-        
+
         Args:
             name: Имя поля
             value: Значение
             formatter_type: Тип форматтера
-            
+
         Returns:
             Отформатированное значение
         """
@@ -117,18 +123,18 @@ class BillmgrAPIResponse:
 
         if callable(formatter):
             return formatter(value)
-        elif 'switch' == formatter:
-            return value == 'on'
+        elif formatter == "switch":
+            return value == "on"
         else:
             return value
 
     def result(self, item_format=None):
         """
         Получить результат в зависимости от типа
-        
+
         Args:
             item_format: Форматтеры для полей
-            
+
         Returns:
             Результат (элемент или список)
         """
@@ -137,8 +143,8 @@ class BillmgrAPIResponse:
         elif self.result_type == "list":
             return self.get_list(item_format=item_format)
         else:
-            raise BillmgrApiError('Unknown result type')
-        
+            raise BillmgrApiError("Unknown result type")
+
     def raw_result(self):
         """Получить сырой результат"""
         return self.doc
@@ -146,23 +152,23 @@ class BillmgrAPIResponse:
     def get_list(self, item_format=None):
         """
         Получить список элементов
-        
+
         Args:
             item_format: Форматтеры для полей
-            
+
         Returns:
             List: Список элементов
         """
         items = []
-        if 'p_elems' in self._doc:
-            if 'elem' in self._doc:
-                for elem in self._doc['elem']:
+        if "p_elems" in self._doc:
+            if "elem" in self._doc:
+                for elem in self._doc["elem"]:
                     item = {}
                     for name, value in elem.items():
-                        if '$orig' in value:
-                            item[name] = value['$orig']
-                        elif '$' in value:
-                            item[name] = value['$']
+                        if "$orig" in value:
+                            item[name] = value["$orig"]
+                        elif "$" in value:
+                            item[name] = value["$"]
                         else:
                             continue
 
@@ -176,21 +182,21 @@ class BillmgrAPIResponse:
             return items
         else:
             return None
-    
+
     def get_item(self, item_format=None):
         """
         Получить один элемент
-        
+
         Args:
             item_format: Форматтеры для полей
-            
+
         Returns:
             Dict: Элемент
         """
         item = {}
         for name, value in self._doc.items():
-            if '$' in value:
-                item[name] = value['$']
+            if "$" in value:
+                item[name] = value["$"]
             else:
                 continue
 
@@ -204,10 +210,11 @@ class BillmgrAPIResponse:
 
 class BillmgrAPI:
     """Клиент API BILLmanager"""
-    
+
     @dataclass
     class PreparedRequest:
         """Подготовленный запрос"""
+
         method: str
         url: str
         params: Optional[dict]
@@ -218,6 +225,7 @@ class BillmgrAPI:
 
     class ApiRequest:
         """Базовый класс для запросов к API"""
+
         method: str
         func_name: str
         result_type: str = "item"  # item, list
@@ -232,67 +240,87 @@ class BillmgrAPI:
         def send(self, client: "BillmgrAPI", timeout=None) -> BillmgrAPIResponse:
             """
             Отправить синхронный запрос
-            
+
             Args:
                 client: Клиент API
                 timeout: Таймаут запроса
-                
+
             Returns:
                 BillmgrAPIResponse: Ответ API
             """
             built_request = client.build_request(
-                self.__class__.method, self.__class__.func_name, 
-                params=self.params, data=self.data,
-                headers=self.headers, cookies=self.cookies, 
-                timeout=timeout, async_session=False
+                self.__class__.method,
+                self.__class__.func_name,
+                params=self.params,
+                data=self.data,
+                headers=self.headers,
+                cookies=self.cookies,
+                timeout=timeout,
+                async_session=False,
             )
 
             try:
                 response: httpx.Response = client.request_session.send(built_request)
             except httpx.NetworkError as e:
-                raise BillmgrRequestError('Network error occured', original_exception=e)
+                raise BillmgrRequestError("Network error occured", original_exception=e)
             except httpx.TimeoutException as e:
-                raise BillmgrRequestError('Request has been interrupted by timeout', original_exception=e)
+                raise BillmgrRequestError(
+                    "Request has been interrupted by timeout", original_exception=e
+                )
             except (httpx.RequestError, Exception) as e:
-                raise BillmgrRequestError('Unknown error during request', original_exception=e)
+                raise BillmgrRequestError("Unknown error during request", original_exception=e)
 
             return client._handle_response(response, result_type=self.__class__.result_type)
 
         async def send_async(self, client: "BillmgrAPI", timeout=None) -> BillmgrAPIResponse:
             """
             Отправить асинхронный запрос
-            
+
             Args:
                 client: Клиент API
                 timeout: Таймаут запроса
-                
+
             Returns:
                 BillmgrAPIResponse: Ответ API
             """
             built_request = client.build_request(
-                self.__class__.method, self.__class__.func_name, 
-                params=self.params, data=self.data,
-                headers=self.headers, cookies=self.cookies, 
-                timeout=timeout, async_session=True
+                self.__class__.method,
+                self.__class__.func_name,
+                params=self.params,
+                data=self.data,
+                headers=self.headers,
+                cookies=self.cookies,
+                timeout=timeout,
+                async_session=True,
             )
 
             try:
                 response: httpx.Response = await client.async_request_session.send(built_request)
             except httpx.NetworkError as e:
-                raise BillmgrRequestError('Network error occured', original_exception=e)
+                raise BillmgrRequestError("Network error occured", original_exception=e)
             except httpx.TimeoutException as e:
-                raise BillmgrRequestError('Request has been interrupted by timeout', original_exception=e)
+                raise BillmgrRequestError(
+                    "Request has been interrupted by timeout", original_exception=e
+                )
             except (httpx.RequestError, Exception) as e:
-                raise BillmgrRequestError('Unknown error during request', original_exception=e)
+                raise BillmgrRequestError("Unknown error during request", original_exception=e)
 
             return client._handle_response(response, result_type=self.__class__.result_type)
 
-    def __init__(self, url: str, session_id: Optional[str] = None, auth_info: Optional[list] = None, interface: Optional[str] = None,
-                 verify_ssl: Union[bool, ssl.SSLContext] = True, headers: Optional[dict] = None,
-                 cookies: Optional[dict] = None, timeout: Optional[float] = None):
+    def __init__(
+        self,
+        url: str,
+        session_id: Optional[str] = None,
+        auth_info: Optional[list] = None,
+        interface: Optional[str] = None,
+        verify_ssl: Union[bool, ssl.SSLContext] = True,
+        headers: Optional[dict] = None,
+        cookies: Optional[dict] = None,
+        timeout: Optional[float] = None,
+    ):
         """
         Инициализировать клиент API
-        
+
         Args:
             url: URL API BILLmanager
             session_id: ID сессии для авторизации
@@ -315,7 +343,7 @@ class BillmgrAPI:
 
         self.verify_ssl = verify_ssl
         self.timeout = timeout
-    
+
         self.session_id = session_id
         self.auth_info = None
         if auth_info:
@@ -334,7 +362,7 @@ class BillmgrAPI:
                 headers=self.headers,
                 cookies=self.cookies,
                 verify_ssl=self.verify_ssl,
-                async_session=False
+                async_session=False,
             )
             self.request_session = new_session
         return new_session
@@ -355,7 +383,7 @@ class BillmgrAPI:
                 headers=self.headers,
                 cookies=self.cookies,
                 verify_ssl=self.verify_ssl,
-                async_session=True
+                async_session=True,
             )
             self.async_request_session = new_session
         return new_session
@@ -385,11 +413,18 @@ class BillmgrAPI:
         await self.close_async_session()
 
     @classmethod
-    def _get_request_session(cls, url: str, interface: Optional[str] = None, verify_ssl: Union[bool, ssl.SSLContext] = True,
-                             headers: Optional[dict] = None, cookies: Optional[dict] = None, async_session: Optional[bool] = None):
+    def _get_request_session(
+        cls,
+        url: str,
+        interface: Optional[str] = None,
+        verify_ssl: Union[bool, ssl.SSLContext] = True,
+        headers: Optional[dict] = None,
+        cookies: Optional[dict] = None,
+        async_session: Optional[bool] = None,
+    ):
         """
         Создать HTTP сессию
-        
+
         Args:
             url: URL API
             interface: Интерфейс для подключения
@@ -397,7 +432,7 @@ class BillmgrAPI:
             headers: Заголовки
             cookies: Cookies
             async_session: Создать асинхронную сессию
-            
+
         Returns:
             HTTP сессия (httpx.Client или httpx.AsyncClient)
         """
@@ -416,19 +451,25 @@ class BillmgrAPI:
         if headers:
             session.headers = headers
 
-        session.headers.update({
-            'Referer': url
-        })
+        session.headers.update({"Referer": url})
         if cookies:
             session.cookies = httpx.Cookies(cookies)
-        
+
         return session
 
-    def _prepare_request(self, method: str, func_name: str, params: Optional[dict] = None, data: Optional[dict] = None, cookies: Optional[dict] = None,
-                     headers: Optional[dict] = None, timeout: Optional[float] = None) -> PreparedRequest:
+    def _prepare_request(
+        self,
+        method: str,
+        func_name: str,
+        params: Optional[dict] = None,
+        data: Optional[dict] = None,
+        cookies: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        timeout: Optional[float] = None,
+    ) -> PreparedRequest:
         """
         Подготовить запрос к API
-        
+
         Args:
             method: HTTP метод
             func_name: Имя функции API
@@ -437,7 +478,7 @@ class BillmgrAPI:
             cookies: Cookies
             headers: Заголовки
             timeout: Таймаут
-            
+
         Returns:
             PreparedRequest: Подготовленный запрос
         """
@@ -448,18 +489,15 @@ class BillmgrAPI:
         request_headers = {}
         request_cookies = {}
 
-        common_params = dict(
-            func=func_name,
-            out='sjson'
-        )
+        common_params = dict(func=func_name, out="sjson")
 
         if self.session_id is not None:
-            common_params['auth'] = self.session_id
+            common_params["auth"] = self.session_id
         elif self.auth_info:
             login, password = self.auth_info
-            common_params['authinfo'] = f'{login}:{password}'
+            common_params["authinfo"] = f"{login}:{password}"
 
-        if method == 'GET':
+        if method == "GET":
             request_params.update(common_params)
         else:
             request_data.update(common_params)
@@ -481,15 +519,29 @@ class BillmgrAPI:
             request_timeout = timeout
 
         return self.__class__.PreparedRequest(
-            method=method, url=url, params=request_params, json_data=request_data,
-            headers=request_headers, cookies=request_cookies, timeout=request_timeout
+            method=method,
+            url=url,
+            params=request_params,
+            json_data=request_data,
+            headers=request_headers,
+            cookies=request_cookies,
+            timeout=request_timeout,
         )
 
-    def build_request(self, method: str, func_name: str, params: Optional[dict] = None, data: Optional[dict] = None, cookies: Optional[dict] = None,
-                     headers: Optional[dict] = None, timeout: Optional[float] = None, async_session: Optional[bool] = None):
+    def build_request(
+        self,
+        method: str,
+        func_name: str,
+        params: Optional[dict] = None,
+        data: Optional[dict] = None,
+        cookies: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        timeout: Optional[float] = None,
+        async_session: Optional[bool] = None,
+    ):
         """
         Построить HTTP запрос
-        
+
         Args:
             method: HTTP метод
             func_name: Имя функции API
@@ -499,11 +551,19 @@ class BillmgrAPI:
             headers: Заголовки
             timeout: Таймаут
             async_session: Использовать асинхронную сессию
-            
+
         Returns:
             httpx.Request: Построенный запрос
         """
-        request = self._prepare_request(method, func_name, params=params, data=data, cookies=cookies, headers=headers, timeout=timeout)
+        request = self._prepare_request(
+            method,
+            func_name,
+            params=params,
+            data=data,
+            cookies=cookies,
+            headers=headers,
+            timeout=timeout,
+        )
         request_session = None
         if async_session:
             request_session: httpx.AsyncClient = self.async_request_session
@@ -511,39 +571,48 @@ class BillmgrAPI:
             request_session: httpx.Client = self.request_session
 
         built_request: httpx.Request = request_session.build_request(
-            method, url=request.url, params=request.params, json=request.json_data,
-            headers=request.headers, cookies=request.cookies, timeout=request.timeout
+            method,
+            url=request.url,
+            params=request.params,
+            json=request.json_data,
+            headers=request.headers,
+            cookies=request.cookies,
+            timeout=request.timeout,
         )
         return built_request
 
-    def _handle_response(self, response: httpx.Response, result_type: str = None) -> BillmgrAPIResponse:
+    def _handle_response(
+        self, response: httpx.Response, result_type: str = None
+    ) -> BillmgrAPIResponse:
         """
         Обработать ответ API
-        
+
         Args:
             response: HTTP ответ
             result_type: Тип результата
-            
+
         Returns:
             BillmgrAPIResponse: Обработанный ответ API
         """
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            raise BillmgrRequestError(f'Server returned bad HTTP code {e.response.status_code}', original_exception=e)
+            raise BillmgrRequestError(
+                f"Server returned bad HTTP code {e.response.status_code}", original_exception=e
+            )
 
         try:
             response_data = response.json()
         except (TypeError, json.JSONDecodeError) as e:
             logger.exception(e)
-            raise BillmgrApiError('Invalid JSON response received')
+            raise BillmgrApiError("Invalid JSON response received")
 
         try:
-            doc = response_data['doc']
+            doc = response_data["doc"]
         except KeyError:
-            raise BillmgrApiError('Invalid response data format')
-        
-        if 'error' in doc:
+            raise BillmgrApiError("Invalid response data format")
+
+        if "error" in doc:
             raise BillmgrApiError(f"Error message: {doc['error']['msg']['$']}")
 
         return BillmgrAPIResponse(doc, result_type=result_type)
@@ -551,6 +620,7 @@ class BillmgrAPI:
 
 class KeepAliveRequest(BillmgrAPI.ApiRequest):
     """Запрос для поддержания сессии активной"""
+
     method = "GET"
     func_name = "keepalive"
     result_type = "item"
@@ -558,6 +628,7 @@ class KeepAliveRequest(BillmgrAPI.ApiRequest):
 
 class AccountDiscountinfoRequest(BillmgrAPI.ApiRequest):
     """Запрос информации о скидках аккаунта"""
+
     method = "GET"
     func_name = "account.discountinfo"
     result_type = "item"
@@ -566,10 +637,10 @@ class AccountDiscountinfoRequest(BillmgrAPI.ApiRequest):
     def get_active_promotion_discounts(response: BillmgrAPIResponse):
         """
         Парсинг ответа для получения активных промо-скидок пользователя
-        
+
         Args:
             response: Ответ API
-            
+
         Returns:
             List: Список активных промо-скидок
         """
@@ -585,5 +656,5 @@ class AccountDiscountinfoRequest(BillmgrAPI.ApiRequest):
                     discount["name"] = discount_elem["name"]["name"]["$"]
                     discount["value"] = discount_elem["value"]["text"]["$"]
                     promotion_discounts.append(discount)
-                    
-        return promotion_discounts 
+
+        return promotion_discounts

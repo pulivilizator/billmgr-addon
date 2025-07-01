@@ -135,13 +135,12 @@ def build_xml(xml_path):
     try:
         builder = XMLBuilder(src_path=src_path, build_path=build_path)
         output_path = builder.build()
-        click.echo(f"✅ XML собран: {output_path}")
+        click.echo(f"XML собран: {output_path}")
     except Exception as e:
-        click.echo(f"❌ Ошибка сборки XML: {e}")
+        click.echo(f"Ошибка сборки XML: {e}")
         raise click.Abort()
 
 
-# Добавляем группу команд деплоя
 main.add_command(deploy_commands)
 
 

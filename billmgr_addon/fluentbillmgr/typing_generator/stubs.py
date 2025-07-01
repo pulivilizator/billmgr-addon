@@ -1,11 +1,11 @@
 from typing import Iterator
 
 from app.fluentbillmgr.typing_generator.renderable_items import (
-    Var,
-    Knot,
     InternalMethod,
+    Knot,
     Method,
     Runner,
+    Var,
 )
 from app.fluentbillmgr.typing_generator.tree import Tree
 
@@ -28,16 +28,12 @@ class Stubs:
                 knot = Runner(self.root)
             if node.children:
                 if node.value:
-                    knot.add_method(
-                        InternalMethod(node.value, args=node.translation_vars)
-                    )
+                    knot.add_method(InternalMethod(node.value, args=node.translation_vars))
                 for name, sub_node in node.children.items():
                     if sub_node.is_leaf:
                         if sub_node.value:
                             knot.add_method(
-                                Method(
-                                    name, sub_node.value, args=sub_node.translation_vars
-                                )
+                                Method(name, sub_node.value, args=sub_node.translation_vars)
                             )
                     else:
                         knot.add_var(Var(name, sub_node.path))

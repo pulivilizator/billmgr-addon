@@ -32,7 +32,7 @@ chdir = pythonpath
 
 # Логирование
 accesslog = "-"  # stdout
-errorlog = "-"   # stderr
+errorlog = "-"  # stderr
 loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
@@ -50,7 +50,7 @@ limit_request_field_size = 8190
 
 # Server mechanics
 preload_app = True  # Загружаем приложение до форка воркеров
-reload = False      # Отключено в продакшене
+reload = False  # Отключено в продакшене
 
 
 def on_starting(server):

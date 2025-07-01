@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 from app.fluentbillmgr.src.abc.runner import AbstractTranslatorRunner
 
+
 class AbstractTranslatorsHub(ABC):
     @abstractmethod
     def __init__(self):
@@ -12,4 +13,3 @@ class AbstractTranslatorsHub(ABC):
     @abstractmethod
     def get_translator_by_locale(self, locale: str) -> AbstractTranslatorRunner:
         raise NotImplementedError
-

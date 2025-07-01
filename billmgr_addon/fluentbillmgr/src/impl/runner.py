@@ -7,7 +7,12 @@ from app.fluentbillmgr.src.impl import AttribTracer
 
 
 class TranslatorRunner(AbstractTranslatorRunner, AttribTracer):
-    def __init__(self, translators: Iterable[AbstractTranslator], separator: str = "-", locale: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        translators: Iterable[AbstractTranslator],
+        separator: str = "-",
+        locale: Optional[str] = None,
+    ) -> None:
         super().__init__()
         self.translators = translators
         self.separator = separator
@@ -29,6 +34,6 @@ class TranslatorRunner(AbstractTranslatorRunner, AttribTracer):
         self.request_line = ""
         return text
 
-    def __getattr__(self, item: str) -> 'TranslatorRunner':
+    def __getattr__(self, item: str) -> "TranslatorRunner":
         self.request_line += f"{item}{self.separator}"
         return self

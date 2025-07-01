@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional, Dict, Tuple
-
-from ordered_set import OrderedSet
+from typing import Dict, Optional, Tuple
 
 from app.fluentbillmgr.typing_generator.translation_dto import Translation
+from ordered_set import OrderedSet
 
 
 @dataclass
@@ -23,10 +22,10 @@ class TreeNode:
 
 class Tree:
     def __init__(
-            self,
-            ftl_syntax: Dict[str, Translation],
-            separator: str = "-",
-            safe_separator: str = "",
+        self,
+        ftl_syntax: Dict[str, Translation],
+        separator: str = "-",
+        safe_separator: str = "",
     ) -> None:
         self.safe_separator = safe_separator
         self.ftl_syntax = ftl_syntax

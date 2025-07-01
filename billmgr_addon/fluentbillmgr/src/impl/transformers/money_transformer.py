@@ -1,10 +1,9 @@
 # coding=utf-8
 from decimal import Decimal
-from typing import Literal, Union, Optional
-
-from fluent_compiler.types import fluent_number, FluentNumber, FluentNone
+from typing import Literal, Optional, Union
 
 from app.fluentbillmgr.src.abc import AbstractDataTransformer
+from fluent_compiler.types import FluentNone, FluentNumber, fluent_number
 
 
 class MoneyTransformer(AbstractDataTransformer):
@@ -12,15 +11,13 @@ class MoneyTransformer(AbstractDataTransformer):
         cls,
         amount: Decimal,
         currency: str,
-        currency_display: Union[
-            Literal["code"], Literal["symbol"], Literal["name"]
-        ] = "code",
+        currency_display: Union[Literal["code"], Literal["symbol"], Literal["name"]] = "code",
         use_grouping: bool = False,
         minimum_significant_digits: Optional[int] = None,
         maximum_significant_digits: Optional[int] = None,
         minimum_fraction_digits: Optional[int] = None,
         maximum_fraction_digits: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> Union[FluentNumber, FluentNone]:
         return fluent_number(
             amount,
@@ -32,5 +29,5 @@ class MoneyTransformer(AbstractDataTransformer):
             maximumSignificantDigits=maximum_significant_digits,
             minimumFractionDigits=minimum_fraction_digits,
             maximumFractionDigits=maximum_fraction_digits,
-            **kwargs
+            **kwargs,
         )

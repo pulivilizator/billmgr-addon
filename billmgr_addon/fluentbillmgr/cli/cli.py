@@ -3,11 +3,9 @@ import time
 from pathlib import Path
 from typing import Union
 
-from watchdog.events import FileModifiedEvent
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
-
 from app.fluentbillmgr.typing_generator import ParsedRawFTL, Stubs, Tree
+from watchdog.events import FileModifiedEvent, FileSystemEventHandler
+from watchdog.observers import Observer
 
 
 class FtlFileEventHandler(FileSystemEventHandler):
@@ -16,7 +14,7 @@ class FtlFileEventHandler(FileSystemEventHandler):
         self.stub_path = stub_path
 
     def on_modified(self, event: FileModifiedEvent):
-        print('event type: %s, path: %s' % (event.event_type, event.src_path))
+        print("event type: %s, path: %s" % (event.event_type, event.src_path))
         if not event.is_directory:
             messages = parse_ftl_dir(self.track_path)
             tree = Tree(messages)

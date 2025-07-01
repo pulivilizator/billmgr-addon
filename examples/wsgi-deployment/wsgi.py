@@ -10,6 +10,7 @@
 """
 
 from pathlib import Path
+
 from billmgr_addon import create_wsgi_app
 
 # Путь к директории с плагином
@@ -21,9 +22,9 @@ plugin_path = Path(__file__).parent
 
 # Или использовать локальный модуль
 app = create_wsgi_app(
-    plugin_name='example_plugin',  # Имя модуля с эндпоинтами
-    plugin_path=plugin_path,       # Путь к плагину
-    config_path=plugin_path / 'config.toml'  # Путь к конфигурации (опционально)
+    plugin_name="example_plugin",  # Имя модуля с эндпоинтами
+    plugin_path=plugin_path,  # Путь к плагину
+    config_path=plugin_path / "config.toml",  # Путь к конфигурации (опционально)
 )
 
 # Альтернативный способ - передать эндпоинты напрямую
@@ -32,13 +33,13 @@ app = create_wsgi_app(
 # app = create_wsgi_app_from_endpoints(endpoints)
 
 # Для локальной разработки
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Получаем Flask приложение для запуска встроенного сервера
     flask_app = app.create_app()
     flask_app.run(
-        host='127.0.0.1',
+        host="127.0.0.1",
         port=8000,
         debug=True,
         # Отключаем reloader для избежания проблем с импортами
-        use_reloader=False
+        use_reloader=False,
     )

@@ -1,8 +1,7 @@
 # coding=utf-8
 
-from fluent_compiler.bundle import FluentBundle
-
 from app.fluentbillmgr.src.abc import AbstractTranslator
+from fluent_compiler.bundle import FluentBundle
 
 
 class FluentTranslator(AbstractTranslator):
@@ -18,4 +17,4 @@ class FluentTranslator(AbstractTranslator):
         return text
 
     def __repr__(self):
-        return f"<fluentogram.FluentTranslator instance, \"{self.locale:}\">"
+        return f'<fluentogram.FluentTranslator instance, "{self.locale:}">'

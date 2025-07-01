@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from typing import Iterable, Optional
+import ipaddress
 from collections import defaultdict
+from dataclasses import dataclass
+from time import time
+from typing import Iterable, Optional
 
 from flask import Request, current_app
 from flask_login import UserMixin
-from dataclasses import dataclass
-from time import time
-import ipaddress
 
 from ..db import get_db
 from ..utils.billmgr_api import BillmgrAPI, BillmgrError, KeepAliveRequest
@@ -18,6 +18,7 @@ class User(UserMixin):
     """
     Пользователь BILLmanager с поддержкой ролей и уровней доступа
     """
+
     id: int
     name: str
     realname: str
@@ -31,10 +32,10 @@ class User(UserMixin):
     def has_roles(self, roles: Optional[Iterable[str]]) -> bool:
         """
         Проверить наличие ролей у пользователя
-        
+
         Args:
             roles: Список требуемых ролей
-            
+
         Returns:
             bool: True если пользователь имеет все требуемые роли
         """
@@ -42,23 +43,26 @@ class User(UserMixin):
             return True
 
         roles = set(roles)
-        db = get_db('billmgr')
+        db = get_db("billmgr")
 
-        core_user_row = db.select_query("""
+        core_user_row = db.select_query(
+            """
             SELECT *
             FROM core_users
             WHERE core_users.name = CAST(%(user_id)s AS CHAR)
-        """, {'user_id': self.id}).one_or_none()
+        """,
+            {"user_id": self.id},
+        ).one_or_none()
 
         if not core_user_row:
             return False
 
-        if core_user_row.get('super') == 'on':
+        if core_user_row.get("super") == "on":
             return True
 
         full_access_mask = 7
-        values = {'user_id': self.id}
-        in_clause = self._build_in_clause('role_', roles, values)
+        values = {"user_id": self.id}
+        in_clause = self._build_in_clause("role_", roles, values)
 
         query = f"""
             SELECT cf.name  AS func_name,
@@ -88,7 +92,7 @@ class User(UserMixin):
 
         roles_access = defaultdict(list)
         for row in permission_rows:
-            roles_access[row['func_name']].append(row['access'])
+            roles_access[row["func_name"]].append(row["access"])
 
         for role in roles:
             if role not in roles_access:
@@ -107,12 +111,12 @@ class User(UserMixin):
     def _build_in_clause(prefix: str, values_iter: Iterable[str], param_dict: dict) -> str:
         """
         Построить IN-clause для SQL запроса
-        
+
         Args:
             prefix: Префикс для параметров
             values_iter: Значения для IN
             param_dict: Словарь параметров
-            
+
         Returns:
             str: Строка с placeholders для IN-clause
         """
@@ -127,26 +131,27 @@ class User(UserMixin):
 def load_billmgr_user(request: Request) -> Optional[User]:
     """
     Загрузить пользователя из сессии BILLmanager
-    
+
     Функция для загрузки пользователя из сессии.
     Вызывается перед обработчиком запроса при использовании @login_required.
-    
+
     Args:
         request: Flask request объект
-        
+
     Returns:
         User or None: Пользователь или None если авторизация неуспешна
     """
     user = None
-    session_id = request.cookies.get('billmgrses5')
-    
+    session_id = request.cookies.get("billmgrses5")
+
     if not session_id:
         return None
-        
-    db = get_db('billmgr')
+
+    db = get_db("billmgr")
 
     # Получаем данные пользователя из сессии
-    user_row = db.select_query("""
+    user_row = db.select_query(
+        """
     SELECT core_session.id AS core_session_id
         , core_session.name AS core_session_name
         , core_session.ip AS core_session_ip
@@ -171,74 +176,76 @@ def load_billmgr_user(request: Request) -> Optional[User]:
         AND totp_status_param.ext_name = 'totp_status'
     WHERE core_session.id = %(session_id)s
         AND user.enabled = 'on'
-    """, {
-        'session_id': session_id
-    }).one_or_none()
+    """,
+        {"session_id": session_id},
+    ).one_or_none()
 
     if not user_row:
         return None
 
     user = User(
-        id=user_row['user_id'],
-        name=user_row['name'],
-        realname=user_row['realname'],
-        session_id=user_row['core_session_id'],
-        auth_level=user_row['level']
+        id=user_row["user_id"],
+        name=user_row["name"],
+        realname=user_row["realname"],
+        session_id=user_row["core_session_id"],
+        auth_level=user_row["level"],
     )
 
     # Проверка IP ограничений
-    ip_address = ipaddress.ip_address(str(request.headers.get('X-Forwarded-For', request.remote_addr)))
-    allowed_ip_ranges = user_row['allowed_ip_ranges']
-    
+    ip_address = ipaddress.ip_address(
+        str(request.headers.get("X-Forwarded-For", request.remote_addr))
+    )
+    allowed_ip_ranges = user_row["allowed_ip_ranges"]
+
     if allowed_ip_ranges:
         is_ip_allowed = False
         allowed_ip_ranges_list = allowed_ip_ranges.split()
-        
+
         # В режиме отладки разрешаем localhost
         if current_app.debug:
-            allowed_ip_ranges_list.append('127.0.0.1')
+            allowed_ip_ranges_list.append("127.0.0.1")
 
         for allowed_ip_string in allowed_ip_ranges_list:
-            if '-' in allowed_ip_string:
+            if "-" in allowed_ip_string:
                 # Диапазон IP
-                ip_range = allowed_ip_string.split('-')
-                ip_range_start = ipaddress.ip_address(ip_range[0]) 
-                ip_range_end = ipaddress.ip_address(ip_range[1]) 
+                ip_range = allowed_ip_string.split("-")
+                ip_range_start = ipaddress.ip_address(ip_range[0])
+                ip_range_end = ipaddress.ip_address(ip_range[1])
                 is_ip_allowed = is_ip_allowed or (ip_range_start <= ip_address <= ip_range_end)
             else:
                 # Сеть или отдельный IP
                 ip_network = ipaddress.ip_interface(str(allowed_ip_string)).network
                 is_ip_allowed = is_ip_allowed or (ip_address in ip_network)
-            
+
             if is_ip_allowed:
                 break
-                
+
         if not is_ip_allowed:
             return None
 
     # Проверка двухфакторной аутентификации
-    if user_row['has_totp_status'] and user_row['totp_status'] != 'on':
+    if user_row["has_totp_status"] and user_row["totp_status"] != "on":
         return None
 
     # Поддержание сессии активной
-    core_session_atime = user_row.get('core_session_atime', None)
+    core_session_atime = user_row.get("core_session_atime", None)
     if core_session_atime:
         idle_seconds = int(time()) - int(core_session_atime)
         idle_minutes_limit = 0
-        
+
         if idle_seconds > (idle_minutes_limit * 60):
             headers = {
-                'X-Forwarded-For': str(ip_address),
-                'X-Forwarded-Secret': current_app.config.get('FORWARDED_SECRET')
+                "X-Forwarded-For": str(ip_address),
+                "X-Forwarded-Secret": current_app.config.get("FORWARDED_SECRET"),
             }
-            
+
             # Обновляем время последней активности
             try:
                 billmgr_api = BillmgrAPI(
-                    url=current_app.config.get('BILLMGR_API_URL'),
-                    interface=current_app.config.get('BILLMGR_API_USE_INTERFACE'),
-                    cookies={'billmgrses5': session_id},
-                    headers=headers
+                    url=current_app.config.get("BILLMGR_API_URL"),
+                    interface=current_app.config.get("BILLMGR_API_USE_INTERFACE"),
+                    cookies={"billmgrses5": session_id},
+                    headers=headers,
                 )
                 with billmgr_api:
                     KeepAliveRequest().send(billmgr_api)
@@ -246,4 +253,4 @@ def load_billmgr_user(request: Request) -> Optional[User]:
                 # Игнорируем ошибки keep-alive для стабильности
                 pass
 
-    return user 
+    return user

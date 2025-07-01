@@ -15,6 +15,6 @@ class AbstractAttribTracer(ABC):
         return request_line
 
     @abstractmethod
-    def __getattr__(self, item) -> 'AbstractAttribTracer':
+    def __getattr__(self, item) -> "AbstractAttribTracer":
         self.request_line += f"{item}{self.separator}"
         return self

@@ -5,4 +5,4 @@
 
 from .project_scaffold import ProjectScaffold
 
-__all__ = ['ProjectScaffold'] 
+__all__ = ["ProjectScaffold"]
