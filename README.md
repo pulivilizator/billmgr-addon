@@ -155,7 +155,7 @@ def get_items():
 Библиотека предоставляет мощную систему логгирования с поддержкой файлов, ротации логов и гибких настроек:
 
 ```python
-from billmgr_addon import setup_logger, setup_development_logging, setup_production_logging
+from billmgr_addon import setup_logger
 
 # Базовая настройка логгера
 logger = setup_logger(
@@ -169,15 +169,6 @@ logger = setup_logger(
 logger.info("Плагин запущен")
 logger.error("Произошла ошибка")
 
-# Быстрая настройка для разработки
-dev_logger = setup_development_logging("my_plugin")
-dev_logger.debug("Отладочная информация")
-
-# Настройка для продакшен окружения
-prod_logger = setup_production_logging(
-    app_name="my_plugin",
-    log_dir="/var/log/billmgr-addons"
-)
 ```
 
 **Возможности логгирования:**

@@ -90,18 +90,8 @@ from .db import DB, DBConfig, FlaskDbExtension, get_db
 from .utils import CustomJSONEncoder, XMLBuilder, create_plugin_symlinks
 from .utils.logging import (
     setup_logger,
-    setup_production_logging,
-    setup_development_logging,
-    get_flask_logger,
-    get_logger,
-    logger,  # Глобальный логгер для прямого импорта
-    set_global_logger,
-    get_global_logger,
-    setup_flask_logging,  # Flask-совместимое логгирование
-    get_flask_compatible_logger,  # Flask-совместимый логгер
-    
-    # Внутренний логгер пакета (новый подход)
-    LOGGER  # Переменная логгера пакета для переназначения
+    LOGGER,
+    LOGGER_NAME,
 )
 
 # WSGI интерфейс
@@ -222,10 +212,8 @@ __all__ = [
     "CustomJSONEncoder",
     # Логгирование
     "setup_logger",
-    "setup_production_logging",
-    "setup_development_logging", 
-    "get_flask_logger",
-    "get_logger",
+    "LOGGER",
+    "LOGGER_NAME",
     # WSGI
     "create_wsgi_app",
     "create_wsgi_app_from_endpoints",
