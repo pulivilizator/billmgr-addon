@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 # Базовые пути для проекта
 cwd_path = Path.cwd()
@@ -37,74 +37,101 @@ def _create_executable_file(path: Union[Path, str], text: str) -> None:
         fh.write(text)
 
 
-def _create_cli_app_link(link_path: Union[Path, str], app_path: Union[Path, str]) -> None:
+def _create_cli_app_link(
+    link_path: Union[Path, str], 
+    app_path: Union[Path, str],
+    server_interpreter_path: Optional[Union[Path, str]] = None,
+    server_app_path: Optional[Union[Path, str]] = None
+) -> None:
     """
     Создать bash-скрипт для запуска CLI приложения
 
     Args:
         link_path: Путь к создаваемому скрипту
-        app_path: Путь к Python приложению
+        app_path: Путь к Python приложению (локальный)
+        server_interpreter_path: Путь к интерпретатору на сервере
+        server_app_path: Путь к приложению на сервере
     """
+    # Используем серверные пути если они переданы
+    actual_interpreter = server_interpreter_path or interpreter_path
+    actual_app_path = server_app_path or app_path
+    
     file_content = f"""#!/bin/bash
 export PYTHONIOENCODING=utf-8
 export LANG=ru_RU.UTF-8
-{interpreter_path} {app_path} "$@"
+{actual_interpreter} {actual_app_path} "$@"
 """
     _create_executable_file(link_path, file_content)
 
 
-def _create_cgi_handler_link(link_path: Union[Path, str]) -> None:
+def _create_cgi_handler_link(
+    link_path: Union[Path, str],
+    server_app_folder: Optional[Union[Path, str]] = None
+) -> None:
     """
     Создать bash-скрипт для CGI обработчика
 
     Args:
         link_path: Путь к создаваемому скрипту
+        server_app_folder: Путь к папке приложения на сервере
     """
+    # Используем серверные пути если они переданы
+    if server_app_folder:
+        server_app_folder = Path(server_app_folder)
+        actual_interpreter = server_app_folder / "venv/bin/python3"
+        actual_cgi_app = server_app_folder / "cgi.py"
+    else:
+        actual_interpreter = interpreter_path
+        actual_cgi_app = cgi_app_path
+    
     file_content = f"""#!/bin/bash
-export FLASK_APP="{cgi_app_path}"
+export FLASK_APP="{actual_cgi_app}"
 export PYTHONIOENCODING=utf-8
 export LANG=ru_RU.UTF-8
-{interpreter_path} {cgi_app_path}
+{actual_interpreter} {actual_cgi_app}
 """
     _create_executable_file(link_path, file_content)
 
 
-def create_plugin_app_link(plugin_name: str) -> Path:
+def create_plugin_app_link(plugin_name: str, server_app_folder: Optional[Union[Path, str]] = None) -> Path:
     """
     Создать ссылку на плагин для addon директории
 
     Args:
         plugin_name: Имя плагина
+        server_app_folder: Путь к папке приложения на сервере
 
     Returns:
         Path: Путь к созданной ссылке
     """
     link_path = mgr_plugin_handlers_path.joinpath(plugin_name)
-    _create_cgi_handler_link(link_path)
+    _create_cgi_handler_link(link_path, server_app_folder)
     return link_path
 
 
-def create_cgi_app_link(plugin_name: str) -> Path:
+def create_cgi_app_link(plugin_name: str, server_app_folder: Optional[Union[Path, str]] = None) -> Path:
     """
     Создать ссылку на CGI приложение
 
     Args:
         plugin_name: Имя плагина
+        server_app_folder: Путь к папке приложения на сервере
 
     Returns:
         Path: Путь к созданной ссылке
     """
     link_path = mgr_cgi_handlers_path.joinpath(plugin_name)
-    _create_cgi_handler_link(link_path)
+    _create_cgi_handler_link(link_path, server_app_folder)
     return link_path
 
 
-def create_plugin_xml_symlink(plugin_name: str) -> Path:
+def create_plugin_xml_symlink(plugin_name: str, server_xml_build_path: Optional[Union[Path, str]] = None) -> Path:
     """
     Создать символическую ссылку на XML файл плагина
 
     Args:
         plugin_name: Имя плагина
+        server_xml_build_path: Путь к build.xml на сервере
 
     Returns:
         Path: Путь к созданной ссылке
@@ -113,7 +140,8 @@ def create_plugin_xml_symlink(plugin_name: str) -> Path:
     if link_path.is_symlink():
         link_path.unlink()
 
-    link_path.symlink_to(xml_build_path)
+    actual_xml_path = server_xml_build_path or xml_build_path
+    link_path.symlink_to(actual_xml_path)
     return link_path
 
 
@@ -150,20 +178,25 @@ def create_processing_module_cli_link(module_name: str) -> Path:
     return link_path
 
 
-def create_plugin_symlinks(plugin_name: str) -> dict:
+def create_plugin_symlinks(plugin_name: str, server_app_folder: Optional[Union[Path, str]] = None) -> dict:
     """
     Создать все необходимые ссылки для плагина
 
     Args:
         plugin_name: Имя плагина
+        server_app_folder: Путь к папке приложения на сервере
 
     Returns:
         dict: Словарь с путями к созданным ссылкам
     """
+    server_xml_build_path = None
+    if server_app_folder:
+        server_xml_build_path = Path(server_app_folder) / "xml/build.xml"
+    
     return {
-        "addon_link": create_plugin_app_link(plugin_name),
-        "cgi_link": create_cgi_app_link(plugin_name),
-        "xml_link": create_plugin_xml_symlink(plugin_name),
+        "addon_link": create_plugin_app_link(plugin_name, server_app_folder),
+        "cgi_link": create_cgi_app_link(plugin_name, server_app_folder),
+        "xml_link": create_plugin_xml_symlink(plugin_name, server_xml_build_path),
     }
 
 

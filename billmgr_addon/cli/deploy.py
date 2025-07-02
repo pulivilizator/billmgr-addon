@@ -29,47 +29,80 @@ def deploy():
     type=click.Path(exists=True, file_okay=False, path_type=Path),
     help="Путь к папке xml (по умолчанию ./xml)",
 )
-def install(plugin_name, force, xml_path):
+@click.option(
+    "--server-app-folder",
+    help="Путь к папке приложения на сервере (для удаленной установки)",
+)
+@click.option(
+    "--update-xml-cache/--no-update-xml-cache",
+    default=True,
+    help="Обновить XML кэш после установки",
+)
+def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
     """Установить плагин в BILLmanager"""
     try:
         click.echo(f"Установка плагина {plugin_name}...")
 
-        # Проверяем, что мы в корне проекта
-        if not Path("cgi.py").exists():
+        # Проверяем, что мы в корне проекта (только для локальной установки)
+        if not server_app_folder and not Path("cgi.py").exists():
             raise click.ClickException("Команда должна выполняться из корня проекта плагина")
 
-        # Собираем XML
-        if xml_path:
-            click.echo(f"Сборка XML конфигурации из {xml_path}...")
-            src_path = xml_path / "src"
-            build_path = xml_path / "build.xml"
+        # Собираем XML (только для локальной установки)
+        if not server_app_folder:
+            if xml_path:
+                click.echo(f"Сборка XML конфигурации из {xml_path}...")
+                src_path = xml_path / "src"
+                build_path = xml_path / "build.xml"
 
-            if not src_path.exists():
-                raise click.ClickException(f"Папка src не найдена в {xml_path}")
-        else:
-            click.echo("Сборка XML конфигурации...")
-            src_path = None
-            build_path = None
+                if not src_path.exists():
+                    raise click.ClickException(f"Папка src не найдена в {xml_path}")
+            else:
+                click.echo("Сборка XML конфигурации...")
+                src_path = None
+                build_path = None
 
-        builder = XMLBuilder(src_path=src_path, build_path=build_path)
-        builder.build()
+            builder = XMLBuilder(src_path=src_path, build_path=build_path)
+            builder.build()
 
         # Создаем ссылки
         click.echo("Создание ссылок...")
-        links = create_plugin_symlinks(plugin_name)
+        links = create_plugin_symlinks(plugin_name, server_app_folder)
 
         for link_type, link_path in links.items():
             click.echo(f"  {link_type}: {link_path}")
 
-        # Перезагружаем BILLmanager
-        click.echo("Перезагрузка BILLmanager...")
-        reload_result = subprocess.run(
-            ["systemctl", "reload", "billmgr"], capture_output=True, text=True
-        )
-        if reload_result.returncode != 0:
-            click.echo(
-                f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
+        # Обновление XML кэша для серверной установки
+        if server_app_folder and update_xml_cache:
+            click.echo("🔄 Обновление XML кэша...")
+            
+            # Обновляем мета-кэш
+            meta_cache_result = subprocess.run(
+                ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--meta-cache", "--apply"],
+                capture_output=True, text=True
             )
+            if meta_cache_result.returncode != 0:
+                click.echo(f"Предупреждение: ошибка обновления мета-кэша: {meta_cache_result.stderr}")
+            
+            # Обновляем языковой кэш
+            lang_cache_result = subprocess.run(
+                ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--lang-cache", "ru", "--base", "en", "--apply"],
+                capture_output=True, text=True
+            )
+            if lang_cache_result.returncode != 0:
+                click.echo(f"Предупреждение: ошибка обновления языкового кэша: {lang_cache_result.stderr}")
+            else:
+                click.echo("  ✅ XML кэш обновлен")
+
+        # Перезагружаем BILLmanager (только если не задан server_app_folder)
+        if not server_app_folder:
+            click.echo("Перезагрузка BILLmanager...")
+            reload_result = subprocess.run(
+                ["systemctl", "reload", "billmgr"], capture_output=True, text=True
+            )
+            if reload_result.returncode != 0:
+                click.echo(
+                    f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
+                )
 
         click.echo(f"Плагин {plugin_name} успешно установлен!")
 
@@ -334,11 +367,11 @@ def remote_deploy(
 
         # 5. Синхронизация файлов
         click.echo("📦 Синхронизация файлов...")
-        files_to_sync = ["app", "public", "xml", "*.py", "*.toml", "requirements.txt", "README.md"]
+        files_to_sync = ["app", "venv", "public", "xml", "*.py", "*.toml", "requirements.txt", "README.md"]
 
         # Исключения
         exclude_patterns = [
-            "--exclude=venv",
+            # "--exclude=venv",
             "--exclude=*.pyc",
             "--exclude=__pycache__",
             "--exclude=.git",
@@ -379,7 +412,7 @@ def remote_deploy(
             click.echo("⚙️  Установка плагина...")
             install_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
                 source venv/bin/activate && \\
-                sudo billmgr-addon deploy install --plugin-name {plugin_name}" """
+                billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder}" """
 
             if dry_run:
                 click.echo(f"  Команда: {install_cmd}")
@@ -391,9 +424,9 @@ def remote_deploy(
                     click.echo("  ⚠️  Предупреждение: ошибка установки плагина")
 
         # 8. Перезапуск BILLmanager
-        if restart_billmgr:
+        if restart_billmgr or install:  # Перезапускаем если установили плагин или явно запрошен перезапуск
             click.echo("🔄 Перезапуск BILLmanager...")
-            restart_cmd = f"ssh {ssh_options} {server} 'systemctl restart billmgr'"
+            restart_cmd = f"ssh {ssh_options} {server} '/usr/local/mgr5/sbin/mgrctl -m billmgr exit'"
 
             if dry_run:
                 click.echo(f"  Команда: {restart_cmd}")
