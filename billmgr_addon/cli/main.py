@@ -18,11 +18,20 @@ def main():
 
 
 @main.command()
-@click.argument('project_name')
+@click.option('--name', help='Имя проекта (по умолчанию: имя текущей директории)')
 @click.option('--path', help='Путь для создания проекта (если не указан, создается в текущей директории)')
 @click.option('--template', default='basic', help='Шаблон проекта')
-def create_project(project_name: str, path: str, template: str):
+def create_project(name: str, path: str, template: str):
     """Создать новый проект плагина"""
+    
+    # Определяем имя проекта
+    if name:
+        project_name = name
+    else:
+        # Используем имя текущей директории
+        project_name = Path.cwd().name
+        if project_name in ['.', '', '/']:
+            project_name = 'my-plugin'
     
     if path:
         # Если указан путь, создаем папку с именем проекта

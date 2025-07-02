@@ -28,8 +28,8 @@ class ProjectScaffold:
 
     def create(self) -> None:
         """Создать проект из шаблона"""
-        if self.project_path.exists():
-            raise ValueError(f"Директория {self.project_path} уже существует")
+        # Проверяем конфликты с существующими файлами вместо директории
+        self._check_conflicts()
 
         # Создаем структуру директорий
         self._create_directories()
@@ -38,6 +38,27 @@ class ProjectScaffold:
         self._create_files()
 
         print(f"Проект {self.project_name} создан в {self.project_path}")
+
+    def _check_conflicts(self) -> None:
+        """Проверить конфликты с существующими файлами"""
+        # Ключевые файлы проекта, которые не должны существовать
+        key_files = [
+            "setup.py",
+            "app/__init__.py", 
+            "cgi.py",
+            "cli.py",
+            "xml/src/main.xml"
+        ]
+        
+        existing_files = []
+        for file_path in key_files:
+            full_path = self.project_path / file_path
+            if full_path.exists():
+                existing_files.append(file_path)
+        
+        if existing_files:
+            files_list = ", ".join(existing_files)
+            raise ValueError(f"Проект уже существует. Найдены файлы: {files_list}")
 
     def _create_directories(self) -> None:
         """Создать структуру директорий"""
