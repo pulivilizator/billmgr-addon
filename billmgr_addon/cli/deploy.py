@@ -4,6 +4,7 @@
 Команды деплоя плагинов на сервер BILLmanager
 """
 
+import glob
 import os
 import subprocess
 from pathlib import Path
@@ -367,7 +368,26 @@ def remote_deploy(
 
         # 5. Синхронизация файлов
         click.echo("📦 Синхронизация файлов...")
-        files_to_sync = ["app", "public", "xml", "*.py", "*.toml", "requirements.txt", "README.md"]
+        
+        # Определяем файлы для синхронизации
+        files_to_sync = []
+        
+        # Добавляем директории, если они существуют
+        for dir_name in ["app", "public", "xml"]:
+            if Path(dir_name).exists():
+                files_to_sync.append(dir_name)
+        
+        # Добавляем файлы по glob patterns
+        for pattern in ["*.py", "*.toml"]:
+            files_to_sync.extend(glob.glob(pattern))
+        
+        # Добавляем конкретные файлы, если они существуют
+        for file_name in ["requirements.txt", "README.md"]:
+            if Path(file_name).exists():
+                files_to_sync.append(file_name)
+        
+        if not files_to_sync:
+            raise click.ClickException("Нет файлов для синхронизации")
 
         # Исключения (убираем venv из exclude так как он создается на сервере)
         exclude_patterns = [
