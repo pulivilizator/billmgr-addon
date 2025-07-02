@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import logging
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional
 
@@ -10,6 +9,7 @@ from flask_login import current_user
 from .request_types import CgiRequest, MgrRequest
 from .response import MgrErrorResponse, MgrUnknownErrorResponse
 from .ui import MgrForm, MgrList
+from ..utils.logging import LOGGER
 
 
 class MgrRouter:
@@ -21,7 +21,7 @@ class MgrRouter:
 
     def __init__(self, app: Flask, endpoints: List["Endpoint"]):
         self.app = app
-        logging.debug("######## MgrRouter __init__")
+        LOGGER.debug("######## MgrRouter __init__")
         app.add_url_rule("/", view_func=self.main_handler, methods=["GET", "POST"])
 
         self.addon_endpoints = {}
@@ -34,14 +34,14 @@ class MgrRouter:
             if isinstance(endpoint, MgrEndpoint):
                 mgr_action_name = endpoint.name
                 if mgr_action_name in self.addon_endpoints:
-                    logging.error(f"Endpoint {mgr_action_name} already exists")
+                    LOGGER.error(f"Endpoint {mgr_action_name} already exists")
                     raise Exception(f"Duplicated endpoint {mgr_action_name}")
 
                 self.addon_endpoints[mgr_action_name] = endpoint
             elif isinstance(endpoint, CgiEndpoint):
                 mgr_action_name = endpoint.name
                 if mgr_action_name in self.cgi_endpoints:
-                    logging.error(f"Endpoint {mgr_action_name} already exists")
+                    LOGGER.error(f"Endpoint {mgr_action_name} already exists")
                     raise Exception(f"Duplicated endpoint {mgr_action_name}")
 
                 self.cgi_endpoints[mgr_action_name] = endpoint
@@ -56,10 +56,10 @@ class MgrRouter:
             endpoint = self.addon_endpoints.get(mgr_action_name)
             if endpoint is None:
                 endpoint = MgrFallbackEndpoint()
-                logging.error(f"Addon endpoint for func={mgr_action_name} is not found")
+                LOGGER.error(f"Addon endpoint for func={mgr_action_name} is not found")
 
             mgr_request = MgrRequest(request.environ)
-            logging.debug(f"request.remote_addr  {request.remote_addr}")
+            LOGGER.debug(f"request.remote_addr  {request.remote_addr}")
 
             if endpoint.__class__.init_user_api:
                 mgr_request.init_user_api(
@@ -69,16 +69,16 @@ class MgrRouter:
                     default_forwarded_secret=current_app.config.get("FORWARDED_SECRET"),
                 )
 
-            logging.debug(f"mgr_request.xml_input {mgr_request.xml_input}")
-            logging.debug(f"mgr_request.params {mgr_request.params}")
-            logging.debug(f"mgr_request.environ {mgr_request.environ}")
+            LOGGER.debug(f"mgr_request.xml_input {mgr_request.xml_input}")
+            LOGGER.debug(f"mgr_request.params {mgr_request.params}")
+            LOGGER.debug(f"mgr_request.environ {mgr_request.environ}")
             return await endpoint.handle_request(mgr_request)
 
         # CGI запрос
         cgi_request = CgiRequest(request=request)
         method = request.method
         func_name = cgi_request.func
-        logging.debug(
+        LOGGER.debug(
             f"cgi request: func - {func_name}, method - {method}, params - {repr(cgi_request)}"
         )
 
@@ -154,7 +154,7 @@ class MgrEndpoint(ABC):
             try:
                 return await self._handle_request(mgr_request)
             except Exception as e:
-                logging.exception(f"Error in {self.__class__.__name__}: {e}")
+                LOGGER.exception(f"Error in {self.__class__.__name__}: {e}")
                 if self.fallback_on_error:
                     return MgrFallbackEndpoint().handle_request(mgr_request)
                 return MgrUnknownErrorResponse()

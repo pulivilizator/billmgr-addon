@@ -22,7 +22,7 @@ from .files import (
     public_path,
     xml_path,
 )
-from .logging import setup_logger
+# Логгирование теперь экспортируется напрямую из основного модуля
 from .serialization import CustomJSONEncoder
 from .xml_builder import XMLBuilder
 
@@ -37,8 +37,7 @@ __all__ = [
     "create_processing_module_symlinks",
     # XML
     "XMLBuilder",
-    # Логирование
-    "setup_logger",
+    # Логирование экспортируется из основного модуля
     # Сериализация
     "CustomJSONEncoder",
     # API BILLmanager

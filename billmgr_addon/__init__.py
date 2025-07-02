@@ -87,7 +87,22 @@ from .auth import load_billmgr_user
 from .db import DB, DBConfig, FlaskDbExtension, get_db
 
 # Утилиты
-from .utils import CustomJSONEncoder, XMLBuilder, create_plugin_symlinks, setup_logger as get_logger
+from .utils import CustomJSONEncoder, XMLBuilder, create_plugin_symlinks
+from .utils.logging import (
+    setup_logger,
+    setup_production_logging,
+    setup_development_logging,
+    get_flask_logger,
+    get_logger,
+    logger,  # Глобальный логгер для прямого импорта
+    set_global_logger,
+    get_global_logger,
+    setup_flask_logging,  # Flask-совместимое логгирование
+    get_flask_compatible_logger,  # Flask-совместимый логгер
+    
+    # Внутренний логгер пакета (новый подход)
+    LOGGER  # Переменная логгера пакета для переназначения
+)
 
 # WSGI интерфейс
 from .wsgi import WSGIAdapter, create_wsgi_app, create_wsgi_app_from_endpoints
@@ -203,9 +218,14 @@ __all__ = [
     "load_billmgr_user",
     # Утилиты
     "create_plugin_symlinks",
-    "get_logger",
-    "XMLBuilder",
+    "XMLBuilder", 
     "CustomJSONEncoder",
+    # Логгирование
+    "setup_logger",
+    "setup_production_logging",
+    "setup_development_logging", 
+    "get_flask_logger",
+    "get_logger",
     # WSGI
     "create_wsgi_app",
     "create_wsgi_app_from_endpoints",

@@ -150,6 +150,55 @@ def get_items():
     """, {"status": "active"}).all()
 ```
 
+### Продвинутое логгирование
+
+Библиотека предоставляет мощную систему логгирования с поддержкой файлов, ротации логов и гибких настроек:
+
+```python
+from billmgr_addon import setup_logger, setup_development_logging, setup_production_logging
+
+# Базовая настройка логгера
+logger = setup_logger(
+    name="my_plugin",
+    filename="my_plugin.log",
+    debug=True,
+    enable_console=True,
+    enable_file=True
+)
+
+logger.info("Плагин запущен")
+logger.error("Произошла ошибка")
+
+# Быстрая настройка для разработки
+dev_logger = setup_development_logging("my_plugin")
+dev_logger.debug("Отладочная информация")
+
+# Настройка для продакшен окружения
+prod_logger = setup_production_logging(
+    app_name="my_plugin",
+    log_dir="/var/log/billmgr-addons"
+)
+```
+
+**Возможности логгирования:**
+- **Ротация файлов** - автоматическое архивирование больших логов
+- **Гибкие форматы** - детальные логи в файлах, краткие в консоли
+- **Настройка уровней** - DEBUG, INFO, WARNING, ERROR
+- **Flask интеграция** - поддержка Flask logger через `get_flask_logger()`
+- **Продакшен готовность** - настройки для серверного окружения
+- **Автоматическое создание папок** - `logs/` создается автоматически
+
+**Форматы логов:**
+- Файлы: `2025-07-02 12:47:16,395 INFO: Сообщение [in /path/file.py:123]`
+- Консоль: `2025-07-02 12:47:16,395 - my_plugin - INFO - Сообщение`
+- Flask команды: `INFO: Сообщение`
+
+**Настройки по умолчанию:**
+- Файлы логов: `./logs/app.log`
+- Ротация: 10MB, 5 резервных файлов
+- Кодировка: UTF-8
+- Консоль + файл: включены
+
 ### Сервисы
 
 ```python

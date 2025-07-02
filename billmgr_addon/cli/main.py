@@ -30,8 +30,8 @@ def create_project(project_name: str, path: str, template: str):
     
     try:
         scaffold.create()
-        click.echo(f"✅ Проект '{project_name}' успешно создан!")
-        click.echo(f"📁 Путь: {project_path.absolute()}")
+        click.echo(f"Проект '{project_name}' успешно создан!")
+        click.echo(f"Путь: {project_path.absolute()}")
         click.echo()
         
         plugin_name_norm = project_name.lower().replace('-', '_')
