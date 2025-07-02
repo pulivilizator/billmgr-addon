@@ -367,17 +367,18 @@ def remote_deploy(
 
         # 5. Синхронизация файлов
         click.echo("📦 Синхронизация файлов...")
-        files_to_sync = ["app", "venv", "public", "xml", "*.py", "*.toml", "requirements.txt", "README.md"]
+        files_to_sync = ["app", "public", "xml", "*.py", "*.toml", "requirements.txt", "README.md"]
 
-        # Исключения
+        # Исключения (убираем venv из exclude так как он создается на сервере)
         exclude_patterns = [
-            # "--exclude=venv",
             "--exclude=*.pyc",
             "--exclude=__pycache__",
             "--exclude=.git",
             "--exclude=.idea",
             "--exclude=.vscode",
+            "--exclude=.mypy_cache",
             "--exclude=xml/src",  # Исключаем исходники XML, оставляем build.xml
+            "--exclude=venv",     # Исключаем venv - он создается на сервере
         ]
 
         rsync_cmd = (
@@ -392,7 +393,21 @@ def remote_deploy(
                 raise click.ClickException("Ошибка синхронизации файлов")
             click.echo("  ✅ Файлы синхронизированы")
 
-        # 6. Установка зависимостей на сервере
+        # 6. Создание виртуального окружения на сервере
+        click.echo("🐍 Создание виртуального окружения на сервере...")
+        venv_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
+            python3 -m venv venv" """
+
+        if dry_run:
+            click.echo(f"  Команда: {venv_cmd}")
+        else:
+            result = subprocess.run(venv_cmd, shell=True)
+            if result.returncode == 0:
+                click.echo("  ✅ Виртуальное окружение создано")
+            else:
+                click.echo("  ⚠️  Предупреждение: ошибка создания виртуального окружения")
+
+        # 7. Установка зависимостей на сервере
         click.echo("📋 Установка зависимостей...")
         deps_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
             source venv/bin/activate && \\
@@ -407,7 +422,7 @@ def remote_deploy(
             else:
                 click.echo("  ⚠️  Предупреждение: ошибка установки зависимостей")
 
-        # 7. Установка плагина
+        # 8. Установка плагина
         if install:
             click.echo("⚙️  Установка плагина...")
             install_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
@@ -423,7 +438,7 @@ def remote_deploy(
                 else:
                     click.echo("  ⚠️  Предупреждение: ошибка установки плагина")
 
-        # 8. Перезапуск BILLmanager
+        # 9. Перезапуск BILLmanager
         if restart_billmgr or install:  # Перезапускаем если установили плагин или явно запрошен перезапуск
             click.echo("🔄 Перезапуск BILLmanager...")
             restart_cmd = f"ssh {ssh_options} {server} '/usr/local/mgr5/sbin/mgrctl -m billmgr exit'"

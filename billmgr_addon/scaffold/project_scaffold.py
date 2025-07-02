@@ -43,9 +43,9 @@ class ProjectScaffold:
         """Создать структуру директорий"""
         dirs = [
             self.project_path,
-            self.project_path / self.template_vars["plugin_name"],
-            self.project_path / self.template_vars["plugin_name"] / "endpoints",
-            self.project_path / self.template_vars["plugin_name"] / "services",
+            self.project_path / "app",  # Всегда создаем папку app
+            self.project_path / "app" / "endpoints",
+            self.project_path / "app" / "services", 
             self.project_path / "xml" / "src",
             self.project_path / "public",
             self.project_path / "tests",
@@ -74,16 +74,17 @@ class ProjectScaffold:
             # Основные файлы проекта
             "setup.py": self._get_setup_py_template(),
             "README.md": self._get_readme_template(),
+            "requirements.txt": self._get_requirements_template(),
             "config.example.toml": self._get_config_template(),
             "deploy.example.toml": self._get_deploy_config_template(),
             ".gitignore": self._get_gitignore_template(),
-            # Python пакет
-            f"{self.template_vars['plugin_name']}/__init__.py": self._get_main_init_template(),
-            f"{self.template_vars['plugin_name']}/app.py": self._get_app_template(),
-            f"{self.template_vars['plugin_name']}/endpoints/__init__.py": self._get_endpoints_init_template(),
-            f"{self.template_vars['plugin_name']}/endpoints/example.py": self._get_example_endpoint_template(),
-            f"{self.template_vars['plugin_name']}/services/__init__.py": "",
-            f"{self.template_vars['plugin_name']}/services/example.py": self._get_example_service_template(),
+            # Python пакет в папке app
+            "app/__init__.py": self._get_main_init_template(),
+            "app/app.py": self._get_app_template(),
+            "app/endpoints/__init__.py": self._get_endpoints_init_template(),
+            "app/endpoints/example.py": self._get_example_endpoint_template(),
+            "app/services/__init__.py": "",
+            "app/services/example.py": self._get_example_service_template(),
             # XML файлы
             "xml/src/main.xml": self._get_main_xml_template(),
             "xml/src/example_list.xml": self._get_example_list_xml_template(),
@@ -107,14 +108,15 @@ setup(
     name='${project_name}',
     version='0.1.0',
     description='BILLmanager plugin: ${project_name}',
-    packages=find_packages(),
+    packages=find_packages(where='app'),
+    package_dir={'': 'app'},
     python_requires='>=3.8',
     install_requires=[
         'billmgr-addon>=0.1.0',
     ],
     entry_points={
         'console_scripts': [
-            '${plugin_name}-cli=${plugin_name}.cli:main',
+            '${plugin_name}-cli=app.app:create_cli_app',
         ],
     },
 )
@@ -155,20 +157,46 @@ ssh_options = "-A -i ~/.ssh/production_key"
 
 BILLmanager плагин: ${project_name}
 
+## Структура проекта
+
+```
+${project_name}/
+├── app/                    # Основная логика плагина
+│   ├── endpoints/          # Обработчики запросов
+│   ├── services/           # Бизнес-логика
+│   └── app.py             # Фабрики Flask приложений
+├── xml/                    # XML конфигурация
+│   ├── src/               # Исходники XML
+│   └── build.xml          # Собранный XML (генерируется)
+├── public/                 # Статические файлы
+├── tests/                  # Тесты
+├── cgi.py                 # CGI точка входа
+├── cli.py                 # CLI точка входа
+├── wsgi.py                # WSGI точка входа
+├── config.toml            # Конфигурация (создать из config.example.toml)
+└── deploy.toml            # Конфигурация деплоя (создать из deploy.example.toml)
+```
+
 ## Установка
 
-1. Клонируйте репозиторий
-2. Создайте виртуальное окружение:
+1. Создайте виртуальное окружение:
    ```bash
    python -m venv venv
    source venv/bin/activate
    ```
-3. Установите зависимости:
+
+2. Установите зависимости:
    ```bash
-   pip install -e .
+   pip install -r requirements.txt
    ```
-4. Скопируйте config.toml из примера и настройте
-5. Установите плагин в BILLmanager:
+
+3. Скопируйте конфигурационные файлы:
+   ```bash
+   cp config.example.toml config.toml
+   cp deploy.example.toml deploy.toml
+   ```
+
+4. Установите плагин в BILLmanager:
    ```bash
    sudo billmgr-addon deploy install --plugin-name ${plugin_name}
    ```
@@ -188,7 +216,7 @@ billmgr-addon build-xml
 
 ## Удаленный деплой
 
-1. Скопируйте deploy.toml из примера и настройте серверы
+1. Настройте серверы в deploy.toml
 2. Выполните деплой:
    ```bash
    billmgr-addon deploy remote-deploy -e dev --plugin-name ${plugin_name}
@@ -411,11 +439,14 @@ from pathlib import Path
 # Добавляем текущую директорию в Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Используем универсальный CGI обработчик
-from billmgr_addon.cgi import main
+# Импортируем приложение из папки app
+from app.app import create_cgi_app
 
 if __name__ == '__main__':
-    main()
+    app = create_cgi_app()
+    # Используем универсальный CGI обработчик
+    from billmgr_addon.cgi import run_with_cgi
+    run_with_cgi(app)
 '''
 
     def _get_cli_template(self) -> str:
@@ -432,11 +463,15 @@ from pathlib import Path
 # Добавляем текущую директорию в Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Используем универсальный CLI обработчик
-from billmgr_addon.cli import main
+# Импортируем приложение из папки app
+from app.app import create_cli_app
 
 if __name__ == "__main__":
-    main()
+    app = create_cli_app()
+    # Запускаем CLI приложение
+    with app.app_context():
+        from billmgr_addon.cli import main
+        main()
 '''
 
     def _get_wsgi_template(self) -> str:
@@ -447,16 +482,17 @@ if __name__ == "__main__":
 WSGI интерфейс для ${project_name}
 """
 
+import sys
 from pathlib import Path
-from billmgr_addon import create_wsgi_app
+
+# Добавляем текущую директорию в Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Импортируем приложение из папки app
+from app.app import create_app
 
 # Создаем WSGI приложение
-# Адаптер автоматически найдет и загрузит эндпоинты из ${plugin_name}
-app = create_wsgi_app(
-    plugin_name='${plugin_name}',
-    plugin_path=Path(__file__).parent,
-    config_path=Path(__file__).parent / 'config.toml'
-)
+app = create_app()
 
 # Для запуска через Gunicorn:
 # gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
@@ -466,8 +502,7 @@ app = create_wsgi_app(
 
 # Для разработки можно использовать встроенный сервер Flask:
 if __name__ == '__main__':
-    flask_app = app.create_app()
-    flask_app.run(debug=True, port=8000)
+    app.run(debug=True, port=8000)
 '''
 
     def _get_build_xml_template(self) -> str:
@@ -495,7 +530,7 @@ if __name__ == '__main__':
         return '''# -*- coding: utf-8 -*-
 
 import pytest
-from ${plugin_name}.services.example import ExampleService
+from app.services.example import ExampleService
 
 
 def test_example_service():

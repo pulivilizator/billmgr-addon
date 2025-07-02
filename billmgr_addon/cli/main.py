@@ -19,25 +19,36 @@ def main():
 
 @main.command()
 @click.argument('project_name')
-@click.option('--path', default='.', help='Путь для создания проекта')
+@click.option('--path', help='Путь для создания проекта (если не указан, создается в текущей директории)')
 @click.option('--template', default='basic', help='Шаблон проекта')
 def create_project(project_name: str, path: str, template: str):
     """Создать новый проект плагина"""
-    click.echo(f"Создание проекта '{project_name}' в '{path}'...")
     
-    project_path = Path(path) / project_name
+    if path:
+        # Если указан путь, создаем папку с именем проекта
+        project_path = Path(path) / project_name
+        click.echo(f"Создание проекта '{project_name}' в '{project_path}'...")
+    else:
+        # Если путь не указан, создаем в текущей директории
+        project_path = Path('.')
+        click.echo(f"Создание проекта '{project_name}' в текущей директории...")
+    
     scaffold = ProjectScaffold(project_name, project_path, template)
     
     try:
         scaffold.create()
         click.echo(f"Проект '{project_name}' успешно создан!")
-        click.echo(f"Путь: {project_path.absolute()}")
+        if path:
+            click.echo(f"Путь: {project_path.absolute()}")
+        else:
+            click.echo(f"Путь: {project_path.absolute()}")
         click.echo()
         
         plugin_name_norm = project_name.lower().replace('-', '_')
 
         click.echo("Следующие шаги:")
-        click.echo(f"  cd {project_name}")
+        if path:
+            click.echo(f"  cd {project_name}")
         click.echo("  # Настройте config.toml")
         click.echo(f"  sudo billmgr-addon deploy install --plugin-name {plugin_name_norm}")
         click.echo()
