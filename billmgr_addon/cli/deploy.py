@@ -321,7 +321,7 @@ def remote_deploy(
                 ["date", "+%Y%m%d-%H%M%S"], capture_output=True, text=True
             ).stdout.strip()
             backup_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
-                tar -zcf backup-{timestamp}.tar.gz \\
+                tar -zcf backup.tar.gz \\
                     --exclude='venv' --exclude='*.pyc' --exclude='__pycache__' \\
                     app public xml *.py *.toml requirements.txt README.md 2>/dev/null || true" """
 
@@ -416,7 +416,7 @@ def remote_deploy(
         # 6. Создание виртуального окружения на сервере
         click.echo("🐍 Создание виртуального окружения на сервере...")
         venv_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
-            python3 -m venv venv" """
+            python3.8 -m venv venv" """
 
         if dry_run:
             click.echo(f"  Команда: {venv_cmd}")
@@ -441,6 +441,33 @@ def remote_deploy(
                 click.echo("  ✅ Зависимости установлены")
             else:
                 click.echo("  ⚠️  Предупреждение: ошибка установки зависимостей")
+
+        # 7.1. Копирование пакета billmgr_addon в venv на сервере
+        click.echo("📦 Копирование пакета billmgr_addon в venv...")
+        
+        # Определяем путь к пакету billmgr_addon в локальном venv
+        import billmgr_addon
+        local_billmgr_addon_path = Path(billmgr_addon.__file__).parent
+        
+        site_packages_path = f"{app_folder}/venv/lib/python3.8/site-packages"
+        
+        # Копируем пакет в site-packages виртуального окружения на сервере
+        billmgr_addon_rsync_cmd = [
+            "rsync", "-rltz", 
+            "--exclude=*.pyc",
+            "--exclude=__pycache__",
+            str(local_billmgr_addon_path),
+            f"{server}:{site_packages_path}/"
+        ]
+        
+        if dry_run:
+            click.echo(f"  Команда: {' '.join(billmgr_addon_rsync_cmd)}")
+        else:
+            result = subprocess.run(billmgr_addon_rsync_cmd, shell=True if '*' in site_packages_path else False)
+            if result.returncode == 0:
+                click.echo("  ✅ Пакет billmgr_addon скопирован в venv")
+            else:
+                click.echo("  ⚠️  Предупреждение: ошибка копирования пакета billmgr_addon")
 
         # 8. Установка плагина
         if install:
@@ -477,7 +504,7 @@ def remote_deploy(
         if not install:
             click.echo("💡 Для установки плагина выполните:")
             click.echo(
-                f"   ssh {server} 'cd {app_folder} && source venv/bin/activate && sudo billmgr-addon deploy install --plugin-name {plugin_name}'"
+                f"   ssh {server} 'cd {app_folder} && source venv/bin/activate && sudo billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder}'"
             )
 
         if not restart_billmgr:
