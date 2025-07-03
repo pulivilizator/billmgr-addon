@@ -445,72 +445,71 @@ def remote_deploy(
         # 7.1. Установка пакета billmgr_addon на сервере
         click.echo("📦 Установка пакета billmgr_addon на сервере...")
 
-        # Определяем путь к базовому пакету billmgr_addon (папка base-addon)
+        # Определяем путь к исходному коду billmgr_addon
+        # Ищем папку base-addon в системе
         import billmgr_addon
-        local_billmgr_addon_path = Path(billmgr_addon.__file__).parent.parent
 
-        # Создаем wheel пакет локально
-        click.echo("  🔧 Создание wheel пакета...")
-        build_wheel_cmd = f"cd {local_billmgr_addon_path} && python setup.py bdist_wheel"
+        # Получаем реальный путь к установленному пакету
+        installed_path = Path(billmgr_addon.__file__).parent
 
-        if dry_run:
-            click.echo(f"  Команда сборки: {build_wheel_cmd}")
+        # Проверяем, установлен ли пакет в editable режиме
+        pth_files = list(installed_path.parent.glob("*.pth"))
+        editable_path = None
+
+        for pth_file in pth_files:
+            try:
+                with open(pth_file, 'r') as f:
+                    content = f.read().strip()
+                    if 'billmgr_addon' in content or 'base-addon' in content:
+                        potential_path = Path(content)
+                        if potential_path.exists() and (potential_path / 'setup.py').exists():
+                            editable_path = potential_path
+                            break
+            except:
+                continue
+
+        if editable_path:
+            local_billmgr_addon_path = editable_path
+            click.echo(f"  📁 Найден editable пакет: {local_billmgr_addon_path}")
         else:
-            result = subprocess.run(build_wheel_cmd, shell=True, capture_output=True, text=True)
-            if result.returncode != 0:
-                click.echo(f"  ⚠️  Ошибка сборки wheel: {result.stderr}")
-                # Fallback к установке через pip в editable режиме
-                install_editable_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
-                    rsync -rltz {local_billmgr_addon_path}/ ./billmgr_addon_src/ && \\
-                    source venv/bin/activate && \\
-                    pip install -e ./billmgr_addon_src/" """
-                
-                result = subprocess.run(install_editable_cmd, shell=True)
-                if result.returncode == 0:
-                    click.echo("  ✅ Пакет установлен в editable режиме")
-                else:
-                    click.echo("  ⚠️  Ошибка установки пакета")
-                return
-
-        # Находим созданный wheel файл
-        dist_path = local_billmgr_addon_path / "dist"
-        wheel_files = list(dist_path.glob("*.whl"))
-        if not wheel_files:
-            click.echo("  ⚠️  Wheel файл не найден")
-            return
+            # Fallback: ищем base-addon рядом с текущим проектом или в стандартных местах
+            current_dir = Path.cwd()
+            possible_paths = [
+                current_dir.parent / "base-addon",
+                current_dir.parent.parent / "base-addon", 
+                Path.home() / "PycharmProjects" / "base-addon",
+                Path("/Users") / "dmitriy" / "PycharmProjects" / "base-addon",
+            ]
             
-        latest_wheel = max(wheel_files, key=lambda x: x.stat().st_mtime)
-        click.echo(f"  📦 Wheel файл: {latest_wheel.name}")
-
-        # Копируем wheel на сервер
-        wheel_rsync_cmd = [
-            "rsync", "-rltz", 
-            str(latest_wheel),
-            f"{server}:{app_folder}/"
-        ]
-
-        if dry_run:
-            click.echo(f"  Команда копирования wheel: {' '.join(wheel_rsync_cmd)}")
-        else:
-            result = subprocess.run(wheel_rsync_cmd)
-            if result.returncode != 0:
-                click.echo("  ⚠️  Ошибка копирования wheel файла")
+            local_billmgr_addon_path = None
+            for path in possible_paths:
+                if path.exists() and (path / "setup.py").exists():
+                    local_billmgr_addon_path = path
+                    break
+            
+            if not local_billmgr_addon_path:
+                click.echo("  ⚠️  Не удалось найти исходники billmgr_addon")
+                click.echo("  💡 Используйте editable установку: pip install -e /path/to/base-addon")
                 return
 
-        # Устанавливаем wheel на сервере
-        install_wheel_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
+        click.echo(f"  📁 Путь к исходникам: {local_billmgr_addon_path}")
+
+        # Копируем исходники и устанавливаем в editable режиме (более надежный способ)
+        install_cmd = f"""
+        rsync -rltz --exclude=*.pyc --exclude=__pycache__ --exclude=dist --exclude=build --exclude=*.egg-info \\
+            {local_billmgr_addon_path}/ {server}:{app_folder}/billmgr_addon_src/ && \\
+
+        ssh {ssh_options} {server} "cd {app_folder} && \\
             source venv/bin/activate && \\
-            pip install {latest_wheel.name}" """
+            pip install -e ./billmgr_addon_src/"
+        """
 
         if dry_run:
-            click.echo(f"  Команда установки wheel: {install_wheel_cmd}")
+            click.echo(f"  Команда: {install_cmd}")
         else:
-            result = subprocess.run(install_wheel_cmd, shell=True)
+            result = subprocess.run(install_cmd, shell=True)
             if result.returncode == 0:
-                click.echo("  ✅ Пакет billmgr_addon установлен")
-                # Удаляем wheel файл с сервера
-                cleanup_cmd = f"ssh {ssh_options} {server} 'rm {app_folder}/{latest_wheel.name}'"
-                subprocess.run(cleanup_cmd, shell=True)
+                click.echo("  ✅ Пакет billmgr_addon установлен в editable режиме")
             else:
                 click.echo("  ⚠️  Предупреждение: ошибка установки пакета billmgr_addon")
         # 8. Установка плагина
