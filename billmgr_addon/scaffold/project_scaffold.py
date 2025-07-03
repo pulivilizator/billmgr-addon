@@ -309,29 +309,26 @@ __all__ = ['endpoints']
 Фабрики Flask приложений для ${project_name}
 """
 
-from billmgr_addon import create_app, create_cgi_app, create_cli_app
+from billmgr_addon import create_app as create_app_base, create_cgi_app as create_cgi_app_base, create_cli_app as create_cli_app_base
 from .endpoints import endpoints
 
 
 def create_cgi_app():
     """Создать CGI приложение для плагина"""
-    return create_cgi_app(endpoints)
+    return create_cgi_app_base(endpoints)
 
 
 def create_cli_app():
     """Создать CLI приложение для плагина"""  
-    return create_cli_app()
+    return create_cli_app_base()
 
 
 def create_app():
     """Создать основное Flask приложение для плагина"""
-    app = create_app()
+    app = create_app_base()
     # Здесь можно добавить дополнительную конфигурацию
     return app
 
-
-# Экспорт для обратной совместимости
-app = create_cgi_app()
 '''
 
     def _get_endpoints_init_template(self) -> str:

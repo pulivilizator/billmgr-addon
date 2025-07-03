@@ -11,6 +11,7 @@ import os
 import sys
 from pathlib import Path
 
+from billmgr_addon.utils.logging import LOGGER
 
 def run_with_cgi(application):
     """
@@ -68,11 +69,7 @@ def run_with_cgi(application):
     try:
         result = application(environ, start_response)
     except Exception as e:
-        # Логирование ошибок
-        from billmgr_addon.utils.logging import get_logger
-
-        logger = get_logger("cgi", remove_default_handlers=True)
-        logger.exception(e)
+        LOGGER.exception(e)
 
         headers_set = []
         headers_sent = []
