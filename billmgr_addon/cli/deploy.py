@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Команды деплоя плагинов на сервер BILLmanager
+Команды деплоя плагинов на сервер
 """
 
 import glob
@@ -44,11 +44,9 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
     try:
         click.echo(f"Установка плагина {plugin_name}...")
 
-        # Проверяем, что мы в корне проекта (только для локальной установки)
         if not server_app_folder and not Path("cgi.py").exists():
             raise click.ClickException("Команда должна выполняться из корня проекта плагина")
 
-        # Собираем XML (только для локальной установки)
         if not server_app_folder:
             if xml_path:
                 click.echo(f"Сборка XML конфигурации из {xml_path}...")
@@ -65,18 +63,15 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
             builder = XMLBuilder(src_path=src_path, build_path=build_path)
             builder.build()
 
-        # Создаем ссылки
         click.echo("Создание ссылок...")
         links = create_plugin_symlinks(plugin_name, server_app_folder)
 
         for link_type, link_path in links.items():
             click.echo(f"  {link_type}: {link_path}")
 
-        # Обновление XML кэша для серверной установки
         if server_app_folder and update_xml_cache:
             click.echo("🔄 Обновление XML кэша...")
             
-            # Обновляем мета-кэш
             meta_cache_result = subprocess.run(
                 ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--meta-cache", "--apply"],
                 capture_output=True, text=True
@@ -84,7 +79,6 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
             if meta_cache_result.returncode != 0:
                 click.echo(f"Предупреждение: ошибка обновления мета-кэша: {meta_cache_result.stderr}")
             
-            # Обновляем языковой кэш
             lang_cache_result = subprocess.run(
                 ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--lang-cache", "ru", "--base", "en", "--apply"],
                 capture_output=True, text=True
@@ -94,7 +88,6 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
             else:
                 click.echo("  ✅ XML кэш обновлен")
 
-        # Перезагружаем BILLmanager (только если не задан server_app_folder)
         if not server_app_folder:
             click.echo("Перезагрузка BILLmanager...")
             reload_result = subprocess.run(
@@ -114,13 +107,12 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
 @deploy.command()
 @click.option("--plugin-name", required=True, help="Имя плагина")
 def uninstall(plugin_name):
-    """Удалить плагин из BILLmanager"""
+    """Удалить плагин"""
     try:
         click.echo(f"Удаление плагина {plugin_name}...")
 
         mgr_paths = get_mgr_paths()
 
-        # Удаляем ссылки
         links_to_remove = [
             mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
@@ -132,7 +124,6 @@ def uninstall(plugin_name):
                 link_path.unlink()
                 click.echo(f"  Удалена ссылка: {link_path}")
 
-        # Перезагружаем BILLmanager
         click.echo("Перезагрузка BILLmanager...")
         reload_result = subprocess.run(
             ["systemctl", "reload", "billmgr"], capture_output=True, text=True
@@ -151,7 +142,7 @@ def uninstall(plugin_name):
 @deploy.command()
 @click.option("--plugin-name", required=True, help="Имя плагина")
 def status(plugin_name):
-    """Показать статус установки плагина"""
+    """Показать статус установки плагина(для вызова на сервере)"""
     try:
         mgr_paths = get_mgr_paths()
 
@@ -194,7 +185,6 @@ def build_xml(xml_path):
         else:
             click.echo("Сборка XML конфигурации...")
 
-        # Используем встроенный XMLBuilder вместо внешнего скрипта
         from ..utils.xml_builder import XMLBuilder
 
         if xml_path:

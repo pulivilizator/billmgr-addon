@@ -16,7 +16,7 @@ from ..utils.billmgr_api import BillmgrAPI, BillmgrError, KeepAliveRequest
 @dataclass
 class User(UserMixin):
     """
-    Пользователь BILLmanager с поддержкой ролей и уровней доступа
+    Пользователь BILLmanager
     """
 
     id: int
@@ -149,7 +149,6 @@ def load_billmgr_user(request: Request) -> Optional[User]:
 
     db = get_db("billmgr")
 
-    # Получаем данные пользователя из сессии
     user_row = db.select_query(
         """
     SELECT core_session.id AS core_session_id
@@ -201,19 +200,16 @@ def load_billmgr_user(request: Request) -> Optional[User]:
         is_ip_allowed = False
         allowed_ip_ranges_list = allowed_ip_ranges.split()
 
-        # В режиме отладки разрешаем localhost
         if current_app.debug:
             allowed_ip_ranges_list.append("127.0.0.1")
 
         for allowed_ip_string in allowed_ip_ranges_list:
             if "-" in allowed_ip_string:
-                # Диапазон IP
                 ip_range = allowed_ip_string.split("-")
                 ip_range_start = ipaddress.ip_address(ip_range[0])
                 ip_range_end = ipaddress.ip_address(ip_range[1])
                 is_ip_allowed = is_ip_allowed or (ip_range_start <= ip_address <= ip_range_end)
             else:
-                # Сеть или отдельный IP
                 ip_network = ipaddress.ip_interface(str(allowed_ip_string)).network
                 is_ip_allowed = is_ip_allowed or (ip_address in ip_network)
 
@@ -239,7 +235,6 @@ def load_billmgr_user(request: Request) -> Optional[User]:
                 "X-Forwarded-Secret": current_app.config.get("FORWARDED_SECRET"),
             }
 
-            # Обновляем время последней активности
             try:
                 billmgr_api = BillmgrAPI(
                     url=current_app.config.get("BILLMGR_API_URL"),

@@ -138,28 +138,29 @@ import sys
 
 _lazy = _LazyModule()
 
-MgrEndpoint = property(lambda self: _lazy.MgrEndpoint)
-ListEndpoint = property(lambda self: _lazy.ListEndpoint)
-FormEndpoint = property(lambda self: _lazy.FormEndpoint)
-ActionEndpoint = property(lambda self: _lazy.ActionEndpoint)
-CgiEndpoint = property(lambda self: _lazy.CgiEndpoint)
-MgrForm = property(lambda self: _lazy.MgrForm)
-MgrList = property(lambda self: _lazy.MgrList)
-MgrError = property(lambda self: _lazy.MgrError)
-MgrRequest = property(lambda self: _lazy.MgrRequest)
-CgiRequest = property(lambda self: _lazy.CgiRequest)
-MgrResponse = property(lambda self: _lazy.MgrResponse)
-MgrErrorResponse = property(lambda self: _lazy.MgrErrorResponse)
-MgrSuccessResponse = property(lambda self: _lazy.MgrSuccessResponse)
-MgrOkResponse = property(lambda self: _lazy.MgrOkResponse)
-MgrRedirectResponse = property(lambda self: _lazy.MgrRedirectResponse)
+# Правильный экспорт классов - через ссылки на объекты, а не property
+MgrEndpoint = _lazy.MgrEndpoint
+ListEndpoint = _lazy.ListEndpoint
+FormEndpoint = _lazy.FormEndpoint
+ActionEndpoint = _lazy.ActionEndpoint
+CgiEndpoint = _lazy.CgiEndpoint
+MgrForm = _lazy.MgrForm
+MgrList = _lazy.MgrList
+MgrError = _lazy.MgrError
+MgrRequest = _lazy.MgrRequest
+CgiRequest = _lazy.CgiRequest
+MgrResponse = _lazy.MgrResponse
+MgrErrorResponse = _lazy.MgrErrorResponse
+MgrSuccessResponse = _lazy.MgrSuccessResponse
+MgrOkResponse = _lazy.MgrOkResponse
+MgrRedirectResponse = _lazy.MgrRedirectResponse
 
 # Processing Module классы
-ProcessingModule = property(lambda self: _lazy.ProcessingModule)
-ProcessingModuleCommand = property(lambda self: _lazy.ProcessingModuleCommand)
-ServiceCommand = property(lambda self: _lazy.ServiceCommand)
-OpenCommand = property(lambda self: _lazy.OpenCommand)
-ProcessingModuleResponse = property(lambda self: _lazy.ProcessingModuleResponse)
+ProcessingModule = _lazy.ProcessingModule
+ProcessingModuleCommand = _lazy.ProcessingModuleCommand
+ServiceCommand = _lazy.ServiceCommand
+OpenCommand = _lazy.OpenCommand
+ProcessingModuleResponse = _lazy.ProcessingModuleResponse
 
 
 # Версия библиотеки

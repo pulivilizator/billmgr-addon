@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CLI интерфейс для BILLmanager Addon
+CLI интерфейс
 """
 
 from .main import main
