@@ -4,8 +4,9 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
-# Базовые пути для проекта
-cwd_path = Path.cwd()
+# Базовые пути для проекта - определяем относительно расположения этого файла
+# Это позволяет работать независимо от текущей рабочей директории
+cwd_path = Path(__file__).resolve().parent.parent.parent
 interpreter_path = cwd_path.joinpath("venv/bin/python3")
 config_path = cwd_path.joinpath("config.toml")
 public_path = cwd_path.joinpath("public")
