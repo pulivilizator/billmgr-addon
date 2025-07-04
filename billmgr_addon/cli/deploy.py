@@ -55,7 +55,7 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
                 if not src_path.exists():
                     raise click.ClickException(f"Папка src не найдена в {xml_path}")
             else:
-        click.echo("Сборка XML конфигурации...")
+                click.echo("Сборка XML конфигурации...")
                 src_path = None
                 build_path = None
 
@@ -103,11 +103,11 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
                 click.echo("  ✅ XML кэш обновлен")
 
         if not server_app_folder:
-        click.echo("Перезагрузка BILLmanager...")
+            click.echo("Перезагрузка BILLmanager...")
             reload_result = subprocess.run(
                 ["systemctl", "reload", "billmgr"], capture_output=True, text=True
             )
-        if reload_result.returncode != 0:
+            if reload_result.returncode != 0:
                 click.echo(
                     f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
                 )
@@ -197,7 +197,7 @@ def build_xml(xml_path):
         if xml_path:
             click.echo(f"Сборка XML конфигурации из {xml_path}...")
         else:
-        click.echo("Сборка XML конфигурации...")
+            click.echo("Сборка XML конфигурации...")
         
         from ..utils.xml_builder import XMLBuilder
 
