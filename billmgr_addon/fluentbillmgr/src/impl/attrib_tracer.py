@@ -1,7 +1,6 @@
 # coding=utf-8
 
-from app.fluentbillmgr.src.abc import AbstractAttribTracer
-
+from ..abc import AbstractAttribTracer
 
 class AttribTracer(AbstractAttribTracer):
     def __init__(self) -> None:

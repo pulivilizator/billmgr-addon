@@ -1,4 +1,4 @@
-from app.fluentbillmgr import AttribTracer
+from .attrib_tracer import AttribTracer
 
 
 class StubsTranslatorRunner(AttribTracer):

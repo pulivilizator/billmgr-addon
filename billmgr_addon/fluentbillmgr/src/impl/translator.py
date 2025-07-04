@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from app.fluentbillmgr.src.abc import AbstractTranslator
+from ..abc import AbstractTranslator
 from fluent_compiler.bundle import FluentBundle
 
 

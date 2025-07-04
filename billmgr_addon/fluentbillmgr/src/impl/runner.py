@@ -1,9 +1,9 @@
 # coding=utf-8
 from typing import Iterable, Optional
 
-from app.fluentbillmgr.src.abc import AbstractTranslator
-from app.fluentbillmgr.src.abc.runner import AbstractTranslatorRunner
-from app.fluentbillmgr.src.impl import AttribTracer
+from ..abc import AbstractTranslator
+from ..abc.runner import AbstractTranslatorRunner
+from .attrib_tracer import AttribTracer
 
 
 class TranslatorRunner(AbstractTranslatorRunner, AttribTracer):

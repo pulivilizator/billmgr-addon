@@ -1,7 +1,7 @@
 # coding=utf-8
 from abc import ABC, abstractmethod
 
-from app.fluentbillmgr.src.abc import AbstractAttribTracer
+from .misc import AbstractAttribTracer
 
 
 class AbstractTranslatorRunner(AbstractAttribTracer, ABC):

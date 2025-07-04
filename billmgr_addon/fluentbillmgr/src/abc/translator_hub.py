@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from app.fluentbillmgr.src.abc.runner import AbstractTranslatorRunner
+from .runner import AbstractTranslatorRunner
 
 
 class AbstractTranslatorsHub(ABC):
