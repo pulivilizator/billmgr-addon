@@ -1,8 +1,9 @@
-import logging
+
 from types import SimpleNamespace
 from typing import Callable
 
 from flask import Flask, current_app
+from billmgr_addon.utils.logging import LOGGER
 
 from ..fluentbillmgr import TranslatorHub, TranslatorRunner
 from ..utils.files import cwd_path
@@ -25,11 +26,11 @@ class I18nExtension:
         app.teardown_appcontext(self.teardown_appcontext_handler)
 
         self._init_i18n()
-        logging.debug("I18nExtension initialized")
+        LOGGER.debug("I18nExtension initialized")
 
     def _init_i18n(self):
         ns = SimpleNamespace()
-        i18n_obj = self.i18n_factory(cwd_path)
+        i18n_obj = self.i18n_factory(str(cwd_path))
         ns.instance = i18n_obj
         self._namespace = ns
 

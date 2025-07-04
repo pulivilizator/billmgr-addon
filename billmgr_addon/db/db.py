@@ -17,10 +17,11 @@ except ImportError:
         MYSQL_AVAILABLE = False
         MySQLdb = None
 
-import logging
 from types import SimpleNamespace
 
 from flask import appcontext_pushed, g
+
+from billmgr_addon.utils.logging import LOGGER
 
 
 def get_db(alias: str = None):
@@ -75,7 +76,7 @@ class FlaskDbExtension:
         appcontext_pushed.connect(self.appcontext_pushed_handler, app)
         app.teardown_appcontext(self.teardown_appcontext_handler)
 
-        logging.debug(f'DB extension initialized with "{self.namespace_id}" namespace')
+        LOGGER.debug(f'DB extension initialized with "{self.namespace_id}" namespace')
 
     def appcontext_pushed_handler(self, sender):
         try:
@@ -84,7 +85,7 @@ class FlaskDbExtension:
             db_namespace.instance = None
             setattr(g, self.namespace_id, db_namespace)
         except Exception as e:
-            logging.exception(e)
+            LOGGER.exception(e)
 
     def teardown_appcontext_handler(self, error):
         db_namespace = getattr(g, self.namespace_id)
@@ -92,7 +93,7 @@ class FlaskDbExtension:
             db_namespace.instance.close()
 
     def on_extension_close(self):
-        logging.debug(f'DB extension with "{self.namespace_id}" namespace is closed')
+        LOGGER.debug(f'DB extension with "{self.namespace_id}" namespace is closed')
 
 
 class DBConfig:

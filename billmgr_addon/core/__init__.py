@@ -10,10 +10,11 @@
 - Базовые классы эндпоинтов
 """
 
-import logging
 from types import SimpleNamespace
 
 from flask import Flask, appcontext_pushed, g
+
+from billmgr_addon.utils.logging import LOGGER
 
 
 def get_router():
@@ -49,7 +50,7 @@ class MgrAddonExtension:
         appcontext_pushed.connect(self.appcontext_pushed_handler, app)
         app.teardown_appcontext(self.teardown_appcontext_handler)
 
-        logging.debug(
+        LOGGER.debug(
             f'MgrAddonExtension extension initialized with "{MgrAddonExtension.namespace_id}" namespace'
         )
 
@@ -60,7 +61,7 @@ class MgrAddonExtension:
             extension_namespace.router = self.router
             setattr(g, MgrAddonExtension.namespace_id, extension_namespace)
         except Exception as e:
-            logging.exception(e)
+            LOGGER.exception(e)
 
     def teardown_appcontext_handler(self, error):
         """Обработчик завершения контекста приложения"""
@@ -68,7 +69,7 @@ class MgrAddonExtension:
 
     def on_extension_close(self):
         """Обработчик закрытия расширения"""
-        logging.debug(
+        LOGGER.debug(
             f'MgrAddonExtension extension with "{MgrAddonExtension.namespace_id}" namespace is closed'
         )
 

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from xml.etree.ElementTree import Element
 
+from billmgr_addon.utils.logging import LOGGER
 from ..request_types import MgrRequest
 
 
@@ -61,7 +61,7 @@ class MgrUnknownNode:
         try:
             return ET.fromstring(self.original_xml)
         except ET.ParseError:
-            logging.error("Could not parse XML from XML input string.")
+            LOGGER.error("Could not parse XML from XML input string.")
             raise
 
 
@@ -84,7 +84,7 @@ class MgrUI(ABC):
         try:
             return ET.fromstring(xml_input_string)
         except ET.ParseError:
-            logging.error("Could not parse XML from XML input string.")
+            LOGGER.error("Could not parse XML from XML input string.")
             raise
 
     def _init_metadata(self):

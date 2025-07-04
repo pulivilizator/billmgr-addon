@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import logging
-
 from flask import jsonify
 from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.http import HTTP_STATUS_CODES
+
+from billmgr_addon.utils.logging import LOGGER
 
 
 def register_error_handlers(app):
@@ -34,12 +34,12 @@ def bad_request(message):
 
 
 def handle_http_exception(exception: HTTPException):
-    logging.info("handle_http_exception")
+    LOGGER.info("handle_http_exception")
     return error_response(exception.code)
 
 
 def handle_internal_error(exception: InternalServerError):
-    logging.exception(
+    LOGGER.exception(
         exception.original_exception
     )  # ".original_exception" is used when it was caused by non-explicit 500 errors.
     return error_response(exception.code)
@@ -47,7 +47,7 @@ def handle_internal_error(exception: InternalServerError):
 
 def handle_exception(exception: Exception):
     # raise InternalServerError() from exception
-    logging.exception(exception)
+    LOGGER.exception(exception)
     return error_response(500)
 
 
