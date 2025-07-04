@@ -11,7 +11,7 @@ LOGGER = None
 
 
 def _create_default_logger():
-    """Создать дефолтный консольный логгер для пакета"""
+    """Создать дефолтный логгер для пакета (без вывода в STDOUT)"""
     logger = logging.getLogger(LOGGER_NAME)
 
     if logger.handlers and logger.level != logging.NOTSET:
@@ -19,12 +19,9 @@ def _create_default_logger():
 
     logger.setLevel(logging.DEBUG)
 
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter("billmgr_addon: %(levelname)s - %(message)s")
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.propagate = False
+    # Убираем вывод в STDOUT по умолчанию для совместимости с BILLmanager
+    # Логгер будет настроен позже через setup_logger или переназначение
+    logger.propagate = False
 
     return logger
 

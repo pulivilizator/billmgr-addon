@@ -42,10 +42,10 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
     """Установить плагин в BILLmanager"""
     try:
         click.echo(f"Установка плагина {plugin_name}...")
-
+        
         if not server_app_folder and not Path("cgi.py").exists():
             raise click.ClickException("Команда должна выполняться из корня проекта плагина")
-
+        
         if not server_app_folder:
             if xml_path:
                 click.echo(f"Сборка XML конфигурации из {xml_path}...")
@@ -55,7 +55,7 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
                 if not src_path.exists():
                     raise click.ClickException(f"Папка src не найдена в {xml_path}")
             else:
-                click.echo("Сборка XML конфигурации...")
+        click.echo("Сборка XML конфигурации...")
                 src_path = None
                 build_path = None
 
@@ -64,10 +64,10 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
 
         click.echo("Создание ссылок...")
         links = create_plugin_symlinks(plugin_name, server_app_folder)
-
+        
         for link_type, link_path in links.items():
             click.echo(f"  {link_type}: {link_path}")
-
+        
         if server_app_folder and update_xml_cache:
             click.echo("🔄 Обновление XML кэша...")
 
@@ -103,17 +103,17 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
                 click.echo("  ✅ XML кэш обновлен")
 
         if not server_app_folder:
-            click.echo("Перезагрузка BILLmanager...")
+        click.echo("Перезагрузка BILLmanager...")
             reload_result = subprocess.run(
                 ["systemctl", "reload", "billmgr"], capture_output=True, text=True
             )
-            if reload_result.returncode != 0:
+        if reload_result.returncode != 0:
                 click.echo(
                     f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
                 )
-
+        
         click.echo(f"Плагин {plugin_name} успешно установлен!")
-
+        
     except Exception as e:
         raise click.ClickException(f"Ошибка установки плагина: {e}")
 
@@ -124,20 +124,20 @@ def uninstall(plugin_name):
     """Удалить плагин"""
     try:
         click.echo(f"Удаление плагина {plugin_name}...")
-
+        
         mgr_paths = get_mgr_paths()
-
+        
         links_to_remove = [
             mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
         ]
-
+        
         for link_path in links_to_remove:
             if link_path.exists():
                 link_path.unlink()
                 click.echo(f"  Удалена ссылка: {link_path}")
-
+        
         click.echo("Перезагрузка BILLmanager...")
         reload_result = subprocess.run(
             ["systemctl", "reload", "billmgr"], capture_output=True, text=True
@@ -146,9 +146,9 @@ def uninstall(plugin_name):
             click.echo(
                 f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
             )
-
+        
         click.echo(f"Плагин {plugin_name} успешно удален!")
-
+        
     except Exception as e:
         raise click.ClickException(f"Ошибка удаления плагина: {e}")
 
@@ -159,15 +159,15 @@ def status(plugin_name):
     """Показать статус установки плагина(для вызова на сервере)"""
     try:
         mgr_paths = get_mgr_paths()
-
+        
         links_to_check = {
             "Addon handler": mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             "CGI handler": mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             "XML config": mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
         }
-
+        
         click.echo(f"Статус плагина {plugin_name}:")
-
+        
         all_exist = True
         for name, path in links_to_check.items():
             exists = path.exists()
@@ -175,12 +175,12 @@ def status(plugin_name):
             click.echo(f"  {status_icon} {name}: {path}")
             if not exists:
                 all_exist = False
-
+        
         if all_exist:
             click.echo("Плагин полностью установлен")
         else:
             click.echo("Плагин установлен не полностью")
-
+        
     except Exception as e:
         raise click.ClickException(f"Ошибка проверки статуса: {e}")
 
@@ -197,8 +197,8 @@ def build_xml(xml_path):
         if xml_path:
             click.echo(f"Сборка XML конфигурации из {xml_path}...")
         else:
-            click.echo("Сборка XML конфигурации...")
-
+        click.echo("Сборка XML конфигурации...")
+        
         from ..utils.xml_builder import XMLBuilder
 
         if xml_path:
@@ -214,7 +214,7 @@ def build_xml(xml_path):
         builder = XMLBuilder(src_path=src_path, build_path=build_path)
         output_path = builder.build()
         click.echo(f"XML конфигурация собрана: {output_path}")
-
+        
     except Exception as e:
         raise click.ClickException(f"Ошибка сборки XML: {e}")
 
