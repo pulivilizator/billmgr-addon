@@ -1,13 +1,7 @@
 from typing import Iterator
 
-from app.fluentbillmgr.typing_generator.renderable_items import (
-    InternalMethod,
-    Knot,
-    Method,
-    Runner,
-    Var,
-)
-from app.fluentbillmgr.typing_generator.tree import Tree
+from .renderable_items import InternalMethod, Knot, Method, Runner, Var
+from .tree import Tree
 
 
 class Stubs:

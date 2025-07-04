@@ -7,7 +7,7 @@ from typing import Dict
 
 class ProjectScaffold:
     """
-    Генератор шаблонов проектов BILLmanager плагинов
+    Генератор шаблонов проектов плагинов
     """
 
     def __init__(self, project_name: str, project_path: Path, template: str = "basic"):
@@ -15,7 +15,6 @@ class ProjectScaffold:
         self.project_path = Path(project_path)
         self.template = template
 
-        # Переменные для шаблонов
         self.template_vars = {
             "project_name": project_name,
             "plugin_name": project_name.lower().replace("-", "_"),
@@ -23,50 +22,36 @@ class ProjectScaffold:
         }
 
     def _to_class_name(self, name: str) -> str:
-        """Преобразовать имя в CamelCase"""
         return "".join(word.capitalize() for word in name.replace("-", "_").split("_"))
 
     def create(self) -> None:
-        """Создать проект из шаблона"""
-        # Проверяем конфликты с существующими файлами вместо директории
         self._check_conflicts()
 
-        # Создаем структуру директорий
         self._create_directories()
 
-        # Создаем файлы из шаблонов
         self._create_files()
 
         print(f"Проект {self.project_name} создан в {self.project_path}")
 
     def _check_conflicts(self) -> None:
-        """Проверить конфликты с существующими файлами"""
-        # Ключевые файлы проекта, которые не должны существовать
-        key_files = [
-            "setup.py",
-            "app/__init__.py", 
-            "cgi.py",
-            "cli.py",
-            "xml/src/main.xml"
-        ]
-        
+        key_files = ["setup.py", "app/__init__.py", "cgi.py", "cli.py", "xml/src/main.xml"]
+
         existing_files = []
         for file_path in key_files:
             full_path = self.project_path / file_path
             if full_path.exists():
                 existing_files.append(file_path)
-        
+
         if existing_files:
             files_list = ", ".join(existing_files)
             raise ValueError(f"Проект уже существует. Найдены файлы: {files_list}")
 
     def _create_directories(self) -> None:
-        """Создать структуру директорий"""
         dirs = [
             self.project_path,
-            self.project_path / "app",  # Всегда создаем папку app
+            self.project_path / "app",
             self.project_path / "app" / "endpoints",
-            self.project_path / "app" / "services", 
+            self.project_path / "app" / "services",
             self.project_path / "xml" / "src",
             self.project_path / "public",
             self.project_path / "tests",
@@ -76,23 +61,19 @@ class ProjectScaffold:
             dir_path.mkdir(parents=True, exist_ok=True)
 
     def _create_files(self) -> None:
-        """Создать файлы из шаблонов"""
         files = self._get_template_files()
 
         for file_path, content in files.items():
             full_path = self.project_path / file_path
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Подставляем переменные в шаблон
             rendered_content = string.Template(content).safe_substitute(self.template_vars)
 
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(rendered_content)
 
     def _get_template_files(self) -> Dict[str, str]:
-        """Получить список файлов шаблона"""
         return {
-            # Основные файлы проекта
             "setup.py": self._get_setup_py_template(),
             "README.md": self._get_readme_template(),
             "requirements.txt": self._get_requirements_template(),
@@ -222,13 +203,6 @@ ${project_name}/
    sudo billmgr-addon deploy install --plugin-name ${plugin_name}
    ```
 
-## Разработка
-
-Для разработки используйте:
-```bash
-pip install -e .
-```
-
 ## Сборка XML
 
 ```bash
@@ -240,7 +214,7 @@ billmgr-addon build-xml
 1. Настройте серверы в deploy.toml
 2. Выполните деплой:
    ```bash
-   billmgr-addon deploy remote-deploy -e dev --plugin-name ${plugin_name}
+   billmgr-addon deploy remote-deploy -e dev/prod --plugin-name ${plugin_name}
    ```
 
 Доступные команды деплоя:

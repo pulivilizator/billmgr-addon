@@ -8,10 +8,7 @@ from xml.etree.ElementTree import Element
 
 class XMLBuilder:
     """
-    Сборщик XML файлов для BILLmanager плагинов
-
-    Собирает XML файлы из директории xml/src в единый build.xml файл,
-    обрабатывая импорты и подстановки.
+    Сборщик XML файлов для плагинов
     """
 
     def __init__(self, src_path: Optional[Path] = None, build_path: Optional[Path] = None):
@@ -28,37 +25,19 @@ class XMLBuilder:
         self.main_entry_path = self.xml_src_path / "main.xml"
 
     def build(self) -> Path:
-        """
-        Собрать XML файлы
-
-        Returns:
-            Path: Путь к собранному XML файлу
-        """
         if not self.main_entry_path.exists():
             raise FileNotFoundError(f"Главный XML файл не найден: {self.main_entry_path}")
 
-        # Создаем директорию для сборки если её нет
         self.xml_build_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Получаем главную запись и выполняем импорты
         main_entry = self._get_entry_from_file(self.main_entry_path)
         main_entry.execute_import()
 
-        # Записываем результат
         ET.ElementTree(main_entry.root).write(self.xml_build_path, encoding="UTF-8", method="xml")
 
         return self.xml_build_path
 
     def _get_entry_from_file(self, entry_path: Path) -> "XmlEntry":
-        """
-        Получить XML запись из файла
-
-        Args:
-            entry_path: Путь к XML файлу
-
-        Returns:
-            XmlEntry: Объект XML записи
-        """
         if not entry_path.is_absolute():
             raise ValueError(f"Entry file path {entry_path} must be absolute")
 
@@ -84,14 +63,6 @@ class XmlEntry:
     def __init__(
         self, absolute_path: Path, root_element: Element, parent_entry: Optional["XmlEntry"] = None
     ):
-        """
-        Инициализировать XML запись
-
-        Args:
-            absolute_path: Абсолютный путь к файлу
-            root_element: Корневой XML элемент
-            parent_entry: Родительская запись
-        """
         self.path = Path(absolute_path)
         self.root = root_element
         self.parent = parent_entry
@@ -100,15 +71,6 @@ class XmlEntry:
         self.import_element_index = None
 
     def has_parent_path(self, path: Path) -> bool:
-        """
-        Проверить есть ли путь среди родителей (для предотвращения циклических ссылок)
-
-        Args:
-            path: Путь для проверки
-
-        Returns:
-            bool: True если путь найден среди родителей
-        """
         current_parent = self.parent
         while current_parent is not None:
             if current_parent.path == path:
@@ -117,9 +79,6 @@ class XmlEntry:
         return False
 
     def execute_import(self) -> None:
-        """
-        Выполнить импорты в XML файле
-        """
         if self.is_import_executed:
             print("Import can be executed only once per entry")
             return
@@ -145,7 +104,6 @@ class XmlEntry:
                     f'Attribute "as" in {import_element_string} can not be empty string\nFailed to import in {self.path}'
                 )
 
-            # Обработка путей начинающихся с @/
             use_xml_src_path = False
             if import_path.startswith("@/"):
                 import_path = import_path[2:]
@@ -157,11 +115,9 @@ class XmlEntry:
                     f"{import_element_string} path must be relative\nFailed to import in {self.path}"
                 )
 
-            # Добавляем расширение .xml если его нет
             if import_path.suffix != ".xml":
                 import_path = Path(f"{import_path}.xml")
 
-            # Определяем полный путь к импортируемому файлу
             try:
                 if use_xml_src_path:
                     import_file_path = xml_src_path.joinpath(import_path).resolve()
@@ -171,7 +127,6 @@ class XmlEntry:
                 if not import_file_path.is_file():
                     raise FileNotFoundError()
 
-                # Проверяем что файл находится в правильной директории
                 is_relative = (
                     xml_src_path == import_file_path or xml_src_path in import_file_path.parents
                 )
@@ -183,19 +138,16 @@ class XmlEntry:
                     f"{import_element_string} must be valid file path inside xml_src_path\nFailed to import in {self.path}"
                 )
 
-            # Проверяем циклические ссылки
             if self.has_parent_path(import_file_path):
                 raise ValueError(
                     f"{import_element_string} circular reference in xml_src_path\nFailed to import in {self.path}"
                 )
 
-            # Создаем дочернюю запись и выполняем импорт
             child_entry = XMLBuilder()._get_entry_from_file(import_file_path)
             child_entry.parent = self
             child_entry.import_element_index = import_element_index
             child_entry.execute_import()
 
-            # Заменяем элемент import на содержимое импортированного файла
             self.root.remove(import_element)
             index_counter = 0
             for child_element in list(child_entry.root):

@@ -6,17 +6,15 @@ from typing import Iterable, List, Optional
 from flask import Flask, Response, current_app, request
 from flask_login import current_user
 
+from ..utils.logging import LOGGER
 from .request_types import CgiRequest, MgrRequest
 from .response import MgrErrorResponse, MgrUnknownErrorResponse
 from .ui import MgrForm, MgrList
-from ..utils.logging import LOGGER
 
 
 class MgrRouter:
     """
-    Основная система маршрутизации для BILLmanager плагинов
-
-    Обрабатывает как MGR запросы (через события), так и CGI запросы.
+    Основная система маршрутизации для плагинов
     """
 
     def __init__(self, app: Flask, endpoints: List["Endpoint"]):
@@ -29,7 +27,6 @@ class MgrRouter:
         self.setup_endpoints(endpoints)
 
     def setup_endpoints(self, endpoints: List["Endpoint"]):
-        """Настройка эндпоинтов плагина"""
         for endpoint in endpoints:
             if isinstance(endpoint, MgrEndpoint):
                 mgr_action_name = endpoint.name
@@ -47,10 +44,8 @@ class MgrRouter:
                 self.cgi_endpoints[mgr_action_name] = endpoint
 
     async def main_handler(self, *args, **kwargs):
-        """Основной обработчик запросов"""
         event_type = request.environ.get("EVENT_TYPE")
         if event_type in ["action", "before", "after", "final"]:
-            # MGR запрос
             mgr_action_name = request.environ.get("ACTION_NAME")
 
             endpoint = self.addon_endpoints.get(mgr_action_name)
@@ -74,7 +69,6 @@ class MgrRouter:
             LOGGER.debug(f"mgr_request.environ {mgr_request.environ}")
             return await endpoint.handle_request(mgr_request)
 
-        # CGI запрос
         cgi_request = CgiRequest(request=request)
         method = request.method
         func_name = cgi_request.func
@@ -90,8 +84,6 @@ class MgrRouter:
 
 
 class Endpoint(ABC):
-    """Базовый класс для всех эндпоинтов"""
-
     def __init__(self, name: str):
         self.name = name
 
@@ -101,8 +93,6 @@ class Endpoint(ABC):
 
 
 class CgiEndpoint(ABC):
-    """Базовый класс для CGI эндпоинтов"""
-
     auth_level: Optional[int] = None
     roles_required: Optional[Iterable] = None
 
@@ -128,15 +118,13 @@ class CgiFallbackEndpoint(CgiEndpoint):
     """Fallback эндпоинт для неизвестных CGI запросов"""
 
     def __init__(self):
-        super().__init__(None)
+        super().__init__("")
 
     async def _handle_request(self, cgi_request: CgiRequest):
         return Response("Cgi handler not found", status=404)
 
 
 class MgrEndpoint(ABC):
-    """Базовый класс для MGR эндпоинтов"""
-
     auth_level: Optional[int] = None
     init_user_api: bool = True
 
@@ -149,7 +137,6 @@ class MgrEndpoint(ABC):
         return MgrErrorResponse("Action not implemented")
 
     async def handle_request(self, mgr_request: MgrRequest):
-        """Обработка MGR запроса"""
         if self.__class__.auth_level is None or self.__class__.auth_level == mgr_request.auth_level:
             try:
                 return await self._handle_request(mgr_request)
@@ -162,7 +149,6 @@ class MgrEndpoint(ABC):
             return MgrErrorResponse("Access denied")
 
     async def _handle_request(self, mgr_request: MgrRequest):
-        """Внутренняя обработка запроса"""
         action_type = self._get_action_type(mgr_request)
         action_handler = self._get_action_handler(action_type)
 
@@ -179,7 +165,6 @@ class MgrEndpoint(ABC):
         return mgr_request.params.get("action", "get")
 
     def _get_action_handler(self, action_type: str):
-        """Получить обработчик для типа действия"""
         handler_map = {
             "get": self._handle_get,
         }
@@ -187,24 +172,18 @@ class MgrEndpoint(ABC):
 
 
 class MgrFallbackEndpoint(MgrEndpoint):
-    """Fallback эндпоинт для неизвестных MGR запросов"""
-
     def __init__(self):
-        super().__init__(None)
+        super().__init__("")
 
     async def get(self, mgr_request: MgrRequest):
         return MgrErrorResponse("Handler not found")
 
 
 class ActionEndpoint(MgrEndpoint):
-    """Эндпоинт для действий"""
-
     pass
 
 
 class ListEndpoint(MgrEndpoint):
-    """Эндпоинт для списков"""
-
     use_parent_data_from_request = False
 
     @abstractmethod
@@ -219,8 +198,6 @@ class ListEndpoint(MgrEndpoint):
 
 
 class FormEndpoint(MgrEndpoint):
-    """Эндпоинт для форм"""
-
     use_parent_data_from_request = False
 
     @abstractmethod

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Утилиты для работы с BILLmanager
+Утилиты для работы с плагинами
 """
 
 from .billmgr_api import (
@@ -14,16 +14,8 @@ from .billmgr_api import (
     get_billmgr_api_as_config_user,
     get_billmgr_api_as_current_user,
 )
-from .files import (
-    config_path,
-    create_plugin_symlinks,
-    create_processing_module_symlinks,
-    cwd_path,
-    public_path,
-    xml_path,
-)
-# Логгирование теперь экспортируется напрямую из основного модуля
-from .serialization import CustomJSONEncoder
+from .files import config_path, create_plugin_symlinks, cwd_path, public_path, xml_path
+from .serialization import CustomJSONEncoder, jsonify
 from .xml_builder import XMLBuilder
 
 __all__ = [
@@ -34,12 +26,11 @@ __all__ = [
     "xml_path",
     # Симлинки
     "create_plugin_symlinks",
-    "create_processing_module_symlinks",
     # XML
     "XMLBuilder",
-    # Логирование экспортируется из основного модуля
     # Сериализация
     "CustomJSONEncoder",
+    "jsonify",
     # API BILLmanager
     "BillmgrAPI",
     "BillmgrAPIResponse",

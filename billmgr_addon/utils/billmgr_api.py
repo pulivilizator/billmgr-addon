@@ -13,13 +13,10 @@ from flask_login import current_user
 
 from ..utils.logging import setup_logger
 
-# Настройка логгера
 logger = setup_logger(__name__)
 
 
 class BillmgrError(Exception):
-    """Базовая ошибка API BILLmanager"""
-
     def __init__(self, message, original_exception=None):
         self.message = message
         self.original_exception = original_exception
@@ -32,23 +29,16 @@ class BillmgrError(Exception):
 
 
 class BillmgrRequestError(BillmgrError):
-    """Ошибка HTTP запроса к API"""
-
     pass
 
 
 class BillmgrApiError(BillmgrError):
-    """Ошибка ответа API"""
-
     pass
 
 
 def get_billmgr_api_as_current_user():
     """
     Получить API клиент для текущего пользователя
-
-    Returns:
-        BillmgrAPI: Клиент API для текущего пользователя
     """
     ip_address = ipaddress.ip_address(
         str(request.headers.get("X-Forwarded-For", request.remote_addr))
@@ -84,8 +74,6 @@ def get_billmgr_api_as_config_user():
 
 
 class BillmgrAPIResponse:
-    """Ответ API BILLmanager"""
-
     def __init__(self, doc, default_format=None, result_type: str = None):
         if doc:
             self._doc = doc
@@ -99,21 +87,9 @@ class BillmgrAPIResponse:
 
     @property
     def doc(self):
-        """Получить документ ответа"""
         return self._doc
 
     def _format_value(self, name, value, formatter_type=None):
-        """
-        Отформатировать значение согласно указанному форматтеру
-
-        Args:
-            name: Имя поля
-            value: Значение
-            formatter_type: Тип форматтера
-
-        Returns:
-            Отформатированное значение
-        """
         formatter = None
         if formatter_type is None:
             if self.default_format and name in self.default_format:
@@ -129,15 +105,6 @@ class BillmgrAPIResponse:
             return value
 
     def result(self, item_format=None):
-        """
-        Получить результат в зависимости от типа
-
-        Args:
-            item_format: Форматтеры для полей
-
-        Returns:
-            Результат (элемент или список)
-        """
         if self.result_type == "item":
             return self.get_item(item_format=item_format)
         elif self.result_type == "list":
@@ -146,19 +113,9 @@ class BillmgrAPIResponse:
             raise BillmgrApiError("Unknown result type")
 
     def raw_result(self):
-        """Получить сырой результат"""
         return self.doc
 
     def get_list(self, item_format=None):
-        """
-        Получить список элементов
-
-        Args:
-            item_format: Форматтеры для полей
-
-        Returns:
-            List: Список элементов
-        """
         items = []
         if "p_elems" in self._doc:
             if "elem" in self._doc:
@@ -184,15 +141,6 @@ class BillmgrAPIResponse:
             return None
 
     def get_item(self, item_format=None):
-        """
-        Получить один элемент
-
-        Args:
-            item_format: Форматтеры для полей
-
-        Returns:
-            Dict: Элемент
-        """
         item = {}
         for name, value in self._doc.items():
             if "$" in value:
@@ -238,16 +186,6 @@ class BillmgrAPI:
             self.cookies = None
 
         def send(self, client: "BillmgrAPI", timeout=None) -> BillmgrAPIResponse:
-            """
-            Отправить синхронный запрос
-
-            Args:
-                client: Клиент API
-                timeout: Таймаут запроса
-
-            Returns:
-                BillmgrAPIResponse: Ответ API
-            """
             built_request = client.build_request(
                 self.__class__.method,
                 self.__class__.func_name,
@@ -273,16 +211,6 @@ class BillmgrAPI:
             return client._handle_response(response, result_type=self.__class__.result_type)
 
         async def send_async(self, client: "BillmgrAPI", timeout=None) -> BillmgrAPIResponse:
-            """
-            Отправить асинхронный запрос
-
-            Args:
-                client: Клиент API
-                timeout: Таймаут запроса
-
-            Returns:
-                BillmgrAPIResponse: Ответ API
-            """
             built_request = client.build_request(
                 self.__class__.method,
                 self.__class__.func_name,
@@ -353,7 +281,6 @@ class BillmgrAPI:
         self.async_request_session: httpx.AsyncClient = None
 
     def start_session(self):
-        """Начать синхронную сессию"""
         new_session = None
         if self.request_session is None:
             new_session = BillmgrAPI._get_request_session(
@@ -368,13 +295,11 @@ class BillmgrAPI:
         return new_session
 
     def close_session(self):
-        """Закрыть синхронную сессию"""
         if self.request_session:
             self.request_session.close()
             self.request_session = None
 
     def start_async_session(self):
-        """Начать асинхронную сессию"""
         new_session = None
         if self.async_request_session is None:
             new_session = BillmgrAPI._get_request_session(
@@ -389,27 +314,22 @@ class BillmgrAPI:
         return new_session
 
     async def close_async_session(self):
-        """Закрыть асинхронную сессию"""
         if self.async_request_session:
             await self.async_request_session.aclose()
             self.async_request_session = None
 
     def __enter__(self):
-        """Контекстный менеджер - вход"""
         self.start_session()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Контекстный менеджер - выход"""
         self.close_session()
 
     async def __aenter__(self):
-        """Асинхронный контекстный менеджер - вход"""
         self.start_async_session()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        """Асинхронный контекстный менеджер - выход"""
         await self.close_async_session()
 
     @classmethod
@@ -584,16 +504,6 @@ class BillmgrAPI:
     def _handle_response(
         self, response: httpx.Response, result_type: str = None
     ) -> BillmgrAPIResponse:
-        """
-        Обработать ответ API
-
-        Args:
-            response: HTTP ответ
-            result_type: Тип результата
-
-        Returns:
-            BillmgrAPIResponse: Обработанный ответ API
-        """
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -619,31 +529,18 @@ class BillmgrAPI:
 
 
 class KeepAliveRequest(BillmgrAPI.ApiRequest):
-    """Запрос для поддержания сессии активной"""
-
     method = "GET"
     func_name = "keepalive"
     result_type = "item"
 
 
 class AccountDiscountinfoRequest(BillmgrAPI.ApiRequest):
-    """Запрос информации о скидках аккаунта"""
-
     method = "GET"
     func_name = "account.discountinfo"
     result_type = "item"
 
     @staticmethod
     def get_active_promotion_discounts(response: BillmgrAPIResponse):
-        """
-        Парсинг ответа для получения активных промо-скидок пользователя
-
-        Args:
-            response: Ответ API
-
-        Returns:
-            List: Список активных промо-скидок
-        """
         promotion_discounts = []
         result = response.raw_result()
         logger.debug(f"AccountDiscountinfoRequest() result {result}")

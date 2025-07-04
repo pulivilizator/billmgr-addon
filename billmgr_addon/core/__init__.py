@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Ядро плагина BILLmanager
+Ядро плагина
 
 Предоставляет основные компоненты для создания плагинов:
 - Система маршрутизации (MgrRouter)
@@ -42,7 +42,6 @@ class MgrAddonExtension:
             app: Flask приложение
             endpoints: Список эндпоинтов плагина
         """
-        # Ленивый импорт для избежания циклических зависимостей
         from .router import MgrRouter
 
         self.router = MgrRouter(app, endpoints)
@@ -66,7 +65,6 @@ class MgrAddonExtension:
     def teardown_appcontext_handler(self, error):
         """Обработчик завершения контекста приложения"""
         extension_namespace = getattr(g, MgrAddonExtension.namespace_id)
-        # Здесь можно добавить очистку ресурсов
 
     def on_extension_close(self):
         """Обработчик закрытия расширения"""
@@ -84,7 +82,6 @@ def create_app():
     """
     app = Flask(__name__)
 
-    # Базовая конфигурация
     app.config.update(
         {
             "DEBUG": False,
@@ -107,7 +104,6 @@ def create_cgi_app(endpoints):
     """
     app = create_app()
 
-    # Инициализация расширения плагина
     mgr_addon = MgrAddonExtension()
     mgr_addon.init_app(app, endpoints)
 
@@ -125,5 +121,4 @@ def create_cli_app():
     return app
 
 
-# Экспорт основных компонентов
 __all__ = ["MgrAddonExtension", "get_router", "create_app", "create_cgi_app", "create_cli_app"]

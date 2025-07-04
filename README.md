@@ -243,54 +243,6 @@ class MyCloudEndpoint(ProjectRequiredEndpoint):
 - Простота понимания и модификации
 
 
-
-### Processing Module (Модуль обработки услуг)
-
-**Processing module** - это специальный тип плагина BILLmanager для автоматизации жизненного цикла услуг. Он позволяет интегрировать внешние системы (облачные платформы, API) с биллингом для автоматического управления услугами.
-
-**Когда используется:**
-- Услуги хостинга (VPS, серверы, домены)
-- Облачные сервисы (проекты, хранилища, БД)
-- Лицензии программного обеспечения
-- Любые услуги с внешним API
-
-**Основные возможности:**
-- Автоматическое создание услуг при оплате
-- Приостановка при просрочке платежа
-- Возобновление после оплаты задолженности
-- Удаление отменённых услуг
-- Сбор статистики использования для начислений
-
-```python
-# Прямой импорт (пока ленивые импорты в разработке)
-from billmgr_addon.core.processing import ProcessingModule, OpenCommand
-from billmgr_addon.core.response import MgrOkResponse
-
-class MyOpenCommand(OpenCommand):
-    async def execute(self, item_id: int = None, **kwargs):
-        # Создание услуги
-        print(f"Создание услуги #{item_id}")
-        # Здесь можно обращаться к внешним API, БД и т.д.
-        return MgrOkResponse()
-
-# Создание модуля
-module = ProcessingModule("myservice")
-module.register_open(MyOpenCommand())
-
-# Использование в processing_module_cli.py:
-from billmgr_addon.core.processing import create_processing_module_app
-app = create_processing_module_app(module)
-```
-
-**Доступные команды:**
-- `open` - создание услуги
-- `resume` - возобновление приостановленной услуги  
-- `suspend` - приостановка услуги
-- `close` - удаление услуги
-- `start/stop` - запуск/остановка (отличается от resume/suspend)
-- `stat` - сбор статистики
-- `features` - описание возможностей модуля
-
 ## CLI команды
 
 ### Создание проекта

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
-from app.fluentbillmgr.typing_generator.translation_dto import Translation
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import (
     FunctionReference,
@@ -20,6 +19,8 @@ from fluent.syntax.ast import (
     VariableReference,
 )
 from ordered_set import OrderedSet
+
+from .translation_dto import Translation
 
 
 @dataclass

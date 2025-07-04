@@ -1,112 +1,78 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import xml.etree.ElementTree as ET
-
-from flask import Response
-
-
-class MgrResponse:
-    """
-    Базовый класс для ответов MGR запросов
-
-    Все ответы BILLmanager должны быть в формате XML.
-    """
-
-    def __init__(self, xml_data=None):
-        self.xml_data = xml_data or "<doc></doc>"
-
-    def to_response(self) -> Response:
-        """Преобразование в Flask Response"""
-        return Response(
-            self.xml_data,
-            mimetype="application/xml",
-            headers={"Content-Type": "application/xml; charset=utf-8"},
-        )
-
-    def __str__(self):
-        return self.xml_data
+from abc import ABC
+from xml.etree.ElementTree import Element
 
 
-class MgrErrorResponse(MgrResponse):
-    """Ответ с ошибкой"""
+class MgrResponse(ABC):
+    def __init__(self) -> None:
+        self.root: Element = ET.Element("doc")
 
-    def __init__(self, error_message="Unknown error", error_code=None):
-        # Создание XML с ошибкой
-        root = ET.Element("doc")
-        error_elem = ET.SubElement(root, "error")
-
-        if error_code:
-            error_elem.set("code", str(error_code))
-
-        error_elem.text = str(error_message)
-
-        xml_data = ET.tostring(root, encoding="unicode")
-        super().__init__(xml_data)
-
-        logging.error(f"MGR Error Response: {error_message}")
-
-
-class MgrUnknownErrorResponse(MgrErrorResponse):
-    """Ответ с неизвестной ошибкой"""
-
-    def __init__(self):
-        super().__init__("Internal server error", "UNKNOWN_ERROR")
-
-
-class MgrSuccessResponse(MgrResponse):
-    """Ответ об успешном выполнении"""
-
-    def __init__(self, message="Success"):
-        root = ET.Element("doc")
-        ok_elem = ET.SubElement(root, "ok")
-        ok_elem.text = str(message)
-
-        xml_data = ET.tostring(root, encoding="unicode")
-        super().__init__(xml_data)
+    def __str__(self) -> str:
+        return ET.tostring(self.root, encoding="unicode", method="xml")
 
 
 class MgrOkResponse(MgrResponse):
-    """Простой OK ответ для processing modules"""
-
-    def __init__(self, message=""):
-        root = ET.Element("doc")
-        if message:
-            root.text = str(message)
-
-        xml_data = ET.tostring(root, encoding="unicode")
-        super().__init__(xml_data)
+    def __init__(self) -> None:
+        super().__init__()
+        ET.SubElement(self.root, "ok")
 
 
 class MgrRedirectResponse(MgrResponse):
-    """Ответ с перенаправлением"""
+    """
+    type бывает list, form, top, blank, url
+    Для форм и списков еще можно задать свойство child=yes, sametab=yes, parenttab=yes управления в какой вкладке открыть
+    notifyup = если нужно обновить счётчики в нотифаях
+    есть еще child=drawer но я не пробовал это где-то кроме визардов
 
-    def __init__(self, redirect_type="form", redirect_target=""):
-        root = ET.Element("doc")
-        redirect_elem = ET.SubElement(root, "redirect")
-        redirect_elem.set("type", redirect_type)
-        redirect_elem.text = redirect_target
+    при redirect_type=url, в func ложить сам url
+    """
 
-        xml_data = ET.tostring(root, encoding="unicode")
-        super().__init__(xml_data)
+    def __init__(
+        self, redirect_type, func, is_same_tab=None, is_child_tab=None, is_parent_tab=None
+    ) -> None:
+        super().__init__()
+        ok_element = ET.SubElement(self.root, "ok", attrib={"type": redirect_type})
+        if is_same_tab:
+            ok_element["sametab"] = "yes"
+        if is_child_tab:
+            ok_element["child"] = "yes"
+        if is_parent_tab:
+            ok_element["parenttab"] = "yes"
+        if redirect_type in ["blank", "url"]:
+            ok_element.text = func
+        else:
+            ok_element.text = f"func={func}"
 
 
-# Вспомогательный класс для файлов
-class DownloadFileData:
-    """Данные для скачивания файлов"""
+class MgrErrorResponse(MgrResponse):
+    def __init__(self, message, exception: Exception = None) -> None:
+        super().__init__()
+        self._message = message
+        self.exception = exception
+        error_element = ET.SubElement(self.root, "error")
+        error_element.attrib.update(
+            {
+                "type": "xml",
+                "report": "no",
+                "lang": "en",
+                # 'code': '1'
+            }
+        )
+        self.message_element = ET.SubElement(error_element, "msg")
+        self.message_element.text = self._message
 
-    def __init__(self, content=b"", filename="file.txt", content_type="text/plain"):
-        self.content = content
-        self.filename = filename
-        self.content_type = content_type
+    @property
+    def message(self):
+        return self._message
+
+    @message.setter
+    def message(self, value):
+        self._message = value
+        self.message_element.text = self._message
 
 
-__all__ = [
-    "MgrResponse",
-    "MgrErrorResponse",
-    "MgrUnknownErrorResponse",
-    "MgrSuccessResponse",
-    "MgrOkResponse",
-    "MgrRedirectResponse",
-    "DownloadFileData",
-]
+class MgrUnknownErrorResponse(MgrErrorResponse):
+    def __init__(self, exception=None) -> None:
+        super().__init__("Unknown Error", exception=exception)

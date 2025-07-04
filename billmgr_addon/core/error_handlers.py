@@ -1,62 +1,58 @@
 # -*- coding: utf-8 -*-
 
-"""
-Обработчики ошибок для BILLmanager плагинов
-"""
-
 import logging
 
-from flask import Flask, current_app, request
+from flask import jsonify
+from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.http import HTTP_STATUS_CODES
 
-from .response import MgrErrorResponse, MgrUnknownErrorResponse
+
+def register_error_handlers(app):
+    app.register_error_handler(HTTPException, handle_http_exception)
+    app.register_error_handler(500, handle_internal_error)
+    app.register_error_handler(Exception, handle_exception)
 
 
-def register_error_handlers(app: Flask):
-    """
-    Регистрирует обработчики ошибок для Flask приложения
+def success_response(payload=None):
+    payload = {"status": "success", "payload": payload}
+    response = jsonify(payload)
+    response.status_code = 200
+    return response
 
-    Args:
-        app: Flask приложение
-    """
 
-    @app.errorhandler(404)
-    def handle_not_found(error):
-        """Обработчик ошибки 404"""
-        logging.warning(f"404 Not Found: {request.url}")
-        return MgrErrorResponse("Resource not found", "NOT_FOUND").to_response(), 404
+def error_response(status_code, message=None):
+    payload = {"status": "error", "message": HTTP_STATUS_CODES.get(status_code, "Unknown error")}
+    if message:
+        payload["message"] = message
+    response = jsonify(payload)
+    response.status_code = status_code
+    return response
 
-    @app.errorhandler(500)
-    def handle_internal_error(error):
-        """Обработчик внутренних ошибок сервера"""
-        logging.exception(f"Internal Server Error: {error}")
-        return MgrUnknownErrorResponse().to_response(), 500
 
-    @app.errorhandler(403)
-    def handle_forbidden(error):
-        """Обработчик ошибки доступа"""
-        logging.warning(f"403 Forbidden: {request.url}")
-        return MgrErrorResponse("Access denied", "FORBIDDEN").to_response(), 403
+def bad_request(message):
+    return error_response(400, message)
 
-    @app.errorhandler(400)
-    def handle_bad_request(error):
-        """Обработчик неверного запроса"""
-        logging.warning(f"400 Bad Request: {request.url}")
-        return MgrErrorResponse("Bad request", "BAD_REQUEST").to_response(), 400
 
-    @app.errorhandler(Exception)
-    def handle_exception(error):
-        """Общий обработчик исключений"""
-        logging.exception(f"Unhandled exception: {error}")
+def handle_http_exception(exception: HTTPException):
+    logging.info("handle_http_exception")
+    return error_response(exception.code)
 
-        # В режиме отладки возвращаем подробную информацию
-        if current_app.debug:
-            return MgrErrorResponse(str(error), "EXCEPTION").to_response(), 500
-        else:
-            return MgrUnknownErrorResponse().to_response(), 500
+
+def handle_internal_error(exception: InternalServerError):
+    logging.exception(
+        exception.original_exception
+    )  # ".original_exception" is used when it was caused by non-explicit 500 errors.
+    return error_response(exception.code)
+
+
+def handle_exception(exception: Exception):
+    # raise InternalServerError() from exception
+    logging.exception(exception)
+    return error_response(500)
 
 
 class BillmgrError(Exception):
-    """Базовое исключение для ошибок BILLmanager"""
+    """Базовое исключение для ошибок"""
 
     def __init__(self, message, code=None):
         self.message = message
@@ -65,13 +61,13 @@ class BillmgrError(Exception):
 
 
 class BillmgrAuthError(BillmgrError):
-    """Ошибка авторизации BILLmanager"""
+    """Ошибка авторизации"""
 
     pass
 
 
 class BillmgrAPIError(BillmgrError):
-    """Ошибка API BILLmanager"""
+    """Ошибка API"""
 
     pass
 
@@ -82,7 +78,6 @@ class BillmgrValidationError(BillmgrError):
     pass
 
 
-# Экспорт
 __all__ = [
     "register_error_handlers",
     "BillmgrError",

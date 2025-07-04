@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Система конфигурации для BILLmanager плагинов
+Система конфигурации для плагинов
 """
 
 import os
@@ -46,13 +46,11 @@ class Config:
         Returns:
             Any: Значение конфигурации
         """
-        # Проверяем переменную окружения
         env_key = key.upper().replace(".", "_")
         env_value = os.getenv(env_key)
         if env_value is not None:
             return self._convert_env_value(env_value)
 
-        # Проверяем конфигурационный файл
         keys = key.split(".")
         current = self.data
 
@@ -66,25 +64,21 @@ class Config:
 
     def _convert_env_value(self, value: str) -> Any:
         """Конвертировать значение из переменной окружения"""
-        # Попытка конвертации в bool
         if value.lower() in ("true", "yes", "1", "on"):
             return True
         elif value.lower() in ("false", "no", "0", "off"):
             return False
 
-        # Попытка конвертации в int
         try:
             return int(value)
         except ValueError:
             pass
 
-        # Попытка конвертации в float
         try:
             return float(value)
         except ValueError:
             pass
 
-        # Возвращаем как строку
         return value
 
     def set(self, key: str, value: Any):
@@ -153,16 +147,13 @@ def init_config_from_flask(app, config: Config):
         app: Flask приложение
         config: Экземпляр конфигурации
     """
-    # Основные настройки Flask
     app.config["DEBUG"] = config.get("debug", False)
     app.config["SECRET_KEY"] = config.get("secret_key", "change-me-in-production")
 
-    # Настройки BILLmanager
     app.config["BILLMGR_API_URL"] = config.get("billmgr.api_url")
     app.config["BILLMGR_API_USE_INTERFACE"] = config.get("billmgr.api_interface")
     app.config["FORWARDED_SECRET"] = config.get("billmgr.forwarded_secret")
 
-    # Настройки БД
     app.config["DB_HOST"] = config.get("database.host")
     app.config["DB_PORT"] = config.get("database.port")
     app.config["DB_NAME"] = config.get("database.name")
@@ -171,7 +162,6 @@ def init_config_from_flask(app, config: Config):
     app.config["DB_CHARSET"] = config.get("database.charset")
 
 
-# Глобальный экземпляр конфигурации
 _config = None
 
 
@@ -183,5 +173,4 @@ def get_config() -> Config:
     return _config
 
 
-# Экспорт
 __all__ = ["Config", "create_default_config", "init_config_from_flask", "get_config"]

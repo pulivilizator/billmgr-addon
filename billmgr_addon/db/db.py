@@ -49,7 +49,6 @@ class FlaskDbExtension:
     Расширение Flask для работы с базой данных
 
     Автоматически управляет подключениями к БД в контексте приложения.
-    Поддерживает множественные подключения через aliases.
     """
 
     def __init__(self):
@@ -79,7 +78,6 @@ class FlaskDbExtension:
         logging.debug(f'DB extension initialized with "{self.namespace_id}" namespace')
 
     def appcontext_pushed_handler(self, sender):
-        """Обработчик создания контекста приложения"""
         try:
             db_namespace = SimpleNamespace()
             db_namespace.config = self.db_config
@@ -89,13 +87,11 @@ class FlaskDbExtension:
             logging.exception(e)
 
     def teardown_appcontext_handler(self, error):
-        """Обработчик завершения контекста приложения"""
         db_namespace = getattr(g, self.namespace_id)
         if db_namespace.instance:
             db_namespace.instance.close()
 
     def on_extension_close(self):
-        """Обработчик закрытия расширения"""
         logging.debug(f'DB extension with "{self.namespace_id}" namespace is closed')
 
 
@@ -124,8 +120,6 @@ class DBConfig:
     @classmethod
     def from_panel_config(cls, config_path, use_unicode=True):
         """
-        Создать конфигурацию из файла панели управления
-
         Args:
             config_path: Путь к файлу конфигурации
             use_unicode: Использовать Unicode
@@ -154,8 +148,6 @@ class DBConfig:
     @classmethod
     def from_panel_name(cls, panel_name, use_unicode=True):
         """
-        Создать конфигурацию для известной панели управления
-
         Args:
             panel_name: Имя панели (billmgr, ispmgr, etc.)
             use_unicode: Использовать Unicode
@@ -193,31 +185,17 @@ class DBConfig:
 class DBResult:
     """
     Обертка для результатов SQL запросов
-
-    Предоставляет удобные методы для получения данных из курсора.
     """
 
     def __init__(self, cursor):
         self.cursor = cursor
 
     def one_or_none(self):
-        """
-        Получить одну запись или None
-
-        Returns:
-            dict or None: Первая запись результата или None
-        """
         result = self.cursor.fetchone()
         self.cursor.close()
         return result
 
     def all(self) -> list:
-        """
-        Получить все записи результата
-
-        Returns:
-            list: Список всех записей
-        """
         result = self.cursor.fetchall()
         if result:
             return [*result]
@@ -225,15 +203,6 @@ class DBResult:
             return []
 
     def chunks(self, size=0):
-        """
-        Получить записи порциями
-
-        Args:
-            size: Размер порции
-
-        Yields:
-            list: Порция записей
-        """
         try:
             if size > 0:
                 while True:
@@ -268,20 +237,6 @@ class DB:
         database=None,
         use_unicode=True,
     ):
-        """
-        Установить подключение к базе данных
-
-        Args:
-            db_config: Объект конфигурации DBConfig
-            host: Хост БД
-            user: Пользователь БД
-            password: Пароль БД
-            database: Имя БД
-            use_unicode: Использовать Unicode
-
-        Returns:
-            MySQLdb.Connection: Объект подключения
-        """
         if db_config is None:
             db_config = DBConfig(
                 host=host, database=database, user=user, password=password, use_unicode=use_unicode
@@ -309,90 +264,38 @@ class DB:
             raise
 
     def close(self):
-        """Закрыть подключение к базе данных"""
         if self.connection:
             self.connection.close()
             self.connection = None
 
     @property
     def cursor(self):
-        """Получить курсор для выполнения запросов"""
         return self.connection.cursor()
 
     def select_query(self, sql, values: dict = None):
-        """
-        Выполнить SELECT запрос
-
-        Args:
-            sql: SQL запрос
-            values: Параметры запроса
-
-        Returns:
-            DBResult: Результат запроса
-        """
         cursor = self.connection.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute(sql, values)
         return DBResult(cursor)
 
     def insert_query(self, sql, values: dict = None):
-        """
-        Выполнить INSERT запрос
-
-        Args:
-            sql: SQL запрос
-            values: Параметры запроса
-
-        Returns:
-            int: ID вставленной записи
-        """
         cursor = self.connection.cursor()
         cursor.execute(sql, values)
         self.connection.commit()
         return cursor.lastrowid
 
     def update_query(self, sql, values: dict = None):
-        """
-        Выполнить UPDATE запрос
-
-        Args:
-            sql: SQL запрос
-            values: Параметры запроса
-
-        Returns:
-            int: Количество затронутых строк
-        """
         cursor = self.connection.cursor()
         cursor.execute(sql, values)
         self.connection.commit()
         return cursor.rowcount
 
     def delete_query(self, sql, values: dict = None):
-        """
-        Выполнить DELETE запрос
-
-        Args:
-            sql: SQL запрос
-            values: Параметры запроса
-
-        Returns:
-            int: Количество удаленных строк
-        """
         cursor = self.connection.cursor()
         cursor.execute(sql, values)
         self.connection.commit()
         return cursor.rowcount
 
     def insert_many(self, sql, values_list: Union[list, tuple]):
-        """
-        Выполнить множественную вставку
-
-        Args:
-            sql: SQL запрос
-            values_list: Список параметров для вставки
-
-        Returns:
-            int: Количество вставленных строк
-        """
         cursor = self.connection.cursor()
         cursor.executemany(sql, values_list)
         self.connection.commit()

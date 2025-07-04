@@ -5,7 +5,6 @@
 """
 
 import glob
-import os
 import subprocess
 from pathlib import Path
 
@@ -71,20 +70,35 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
 
         if server_app_folder and update_xml_cache:
             click.echo("🔄 Обновление XML кэша...")
-            
+
             meta_cache_result = subprocess.run(
                 ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--meta-cache", "--apply"],
-                capture_output=True, text=True
+                capture_output=True,
+                text=True,
             )
             if meta_cache_result.returncode != 0:
-                click.echo(f"Предупреждение: ошибка обновления мета-кэша: {meta_cache_result.stderr}")
-            
+                click.echo(
+                    f"Предупреждение: ошибка обновления мета-кэша: {meta_cache_result.stderr}"
+                )
+
             lang_cache_result = subprocess.run(
-                ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--lang-cache", "ru", "--base", "en", "--apply"],
-                capture_output=True, text=True
+                [
+                    "/usr/local/mgr5/sbin/xmlinstall",
+                    "-m",
+                    "billmgr",
+                    "--lang-cache",
+                    "ru",
+                    "--base",
+                    "en",
+                    "--apply",
+                ],
+                capture_output=True,
+                text=True,
             )
             if lang_cache_result.returncode != 0:
-                click.echo(f"Предупреждение: ошибка обновления языкового кэша: {lang_cache_result.stderr}")
+                click.echo(
+                    f"Предупреждение: ошибка обновления языкового кэша: {lang_cache_result.stderr}"
+                )
             else:
                 click.echo("  ✅ XML кэш обновлен")
 
@@ -206,35 +220,6 @@ def build_xml(xml_path):
 
 
 @deploy.command()
-@click.option("--host", default="localhost", help="Хост для сервера разработки")
-@click.option("--port", default=5000, help="Порт для сервера разработки")
-@click.option("--debug", is_flag=True, help="Режим отладки")
-def dev_server(host, port, debug):
-    """Запустить сервер разработки"""
-    try:
-        click.echo(f"Запуск сервера разработки на {host}:{port}")
-
-        if not Path("cgi.py").exists():
-            raise click.ClickException("Файл cgi.py не найден в текущей директории")
-
-        env = os.environ.copy()
-        env["FLASK_ENV"] = "development" if debug else "production"
-        env["FLASK_DEBUG"] = "1" if debug else "0"
-
-        # Запускаем через Python с параметрами
-        cmd = ["python", "cgi.py", "--dev", "--host", host, "--port", str(port)]
-        if debug:
-            cmd.append("--debug")
-
-        subprocess.run(cmd, env=env)
-
-    except KeyboardInterrupt:
-        click.echo("\nСервер остановлен")
-    except Exception as e:
-        raise click.ClickException(f"Ошибка запуска сервера: {e}")
-
-
-@deploy.command()
 @click.option("--environment", "-e", required=True, help="Окружение деплоя (dev, prod)")
 @click.option("--plugin-name", required=True, help="Имя плагина для установки на сервере")
 @click.option("--config", "-c", default="deploy.toml", help="Путь к файлу конфигурации деплоя")
@@ -256,13 +241,11 @@ def remote_deploy(
 ):
     """Деплой плагина на удаленный сервер"""
     try:
-        click.echo(f"🚀 Удаленный деплой плагина '{plugin_name}' в окружение '{environment}'")
+        click.echo(f"Удаленный деплой плагина '{plugin_name}' в окружение '{environment}'")
 
-        # Проверяем, что мы в корне проекта
         if not Path("cgi.py").exists():
             raise click.ClickException("Команда должна выполняться из корня проекта плагина")
 
-        # Читаем конфигурацию деплоя
         config_path = Path(config)
         if not config_path.exists():
             raise click.ClickException(f"Файл конфигурации '{config}' не найден")
@@ -288,14 +271,13 @@ def remote_deploy(
         app_folder = env_config["app_folder"]
         ssh_options = env_config.get("ssh_options", "-A")
 
-        click.echo(f"📡 Сервер: {server}")
-        click.echo(f"📁 Папка: {app_folder}")
+        click.echo(f"Сервер: {server}")
+        click.echo(f"Папка: {app_folder}")
 
         if dry_run:
-            click.echo("🔍 Режим dry-run: команды не будут выполнены")
+            click.echo("Режим dry-run: команды не будут выполнены")
 
-        # 1. Проверяем доступность сервера и папки
-        click.echo("🔍 Проверка доступности сервера...")
+        click.echo("Проверка доступности сервера...")
         check_cmd = f"ssh {ssh_options} {server} 'test -d {app_folder}'"
         if dry_run:
             click.echo(f"  Команда: {check_cmd}")
@@ -304,12 +286,8 @@ def remote_deploy(
             if result.returncode != 0:
                 raise click.ClickException(f"Папка {app_folder} не найдена на сервере {server}")
 
-        # 2. Создание бэкапа
         if backup:
-            click.echo("💾 Создание бэкапа...")
-            timestamp = subprocess.run(
-                ["date", "+%Y%m%d-%H%M%S"], capture_output=True, text=True
-            ).stdout.strip()
+            click.echo("Создание бэкапа...")
             backup_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
                 tar -zcf backup.tar.gz \\
                     --exclude='venv' --exclude='*.pyc' --exclude='__pycache__' \\
@@ -320,12 +298,11 @@ def remote_deploy(
             else:
                 result = subprocess.run(backup_cmd, shell=True)
                 if result.returncode == 0:
-                    click.echo(f"Бэкап создан: backup.tar.gz")
+                    click.echo("Бэкап создан: backup.tar.gz")
                 else:
                     click.echo("Предупреждение: ошибка создания бэкапа")
 
-        # 3. Очистка старых файлов
-        click.echo("🧹 Очистка старых файлов...")
+        click.echo("Очистка старых файлов...")
         cleanup_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
             find app -mindepth 1 -delete 2>/dev/null || true && \\
             find public -mindepth 1 -delete 2>/dev/null || true && \\
@@ -336,11 +313,10 @@ def remote_deploy(
         else:
             subprocess.run(cleanup_cmd, shell=True)
 
-        # 4. Сборка XML локально
         if xml_path:
-            click.echo(f"🔧 Сборка XML конфигурации из {xml_path}...")
+            click.echo(f"Сборка XML конфигурации из {xml_path}...")
         else:
-            click.echo("🔧 Сборка XML конфигурации...")
+            click.echo("Сборка XML конфигурации...")
 
         if not dry_run:
             if xml_path:
@@ -356,30 +332,24 @@ def remote_deploy(
             builder = XMLBuilder(src_path=src_path, build_path=build_path)
             builder.build()
 
-        # 5. Синхронизация файлов
-        click.echo("📦 Синхронизация файлов...")
-        
-        # Определяем файлы для синхронизации
+        click.echo("Синхронизация файлов...")
+
         files_to_sync = []
-        
-        # Добавляем директории, если они существуют
+
         for dir_name in ["app", "public", "xml"]:
             if Path(dir_name).exists():
                 files_to_sync.append(dir_name)
-        
-        # Добавляем файлы по glob patterns
+
         for pattern in ["*.py", "*.toml"]:
             files_to_sync.extend(glob.glob(pattern))
-        
-        # Добавляем конкретные файлы, если они существуют
+
         for file_name in ["requirements.txt", "README.md"]:
             if Path(file_name).exists():
                 files_to_sync.append(file_name)
-        
+
         if not files_to_sync:
             raise click.ClickException("Нет файлов для синхронизации")
 
-        # Исключения (убираем venv из exclude так как он создается на сервере)
         exclude_patterns = [
             "--exclude=*.pyc",
             "--exclude=__pycache__",
@@ -387,8 +357,8 @@ def remote_deploy(
             "--exclude=.idea",
             "--exclude=.vscode",
             "--exclude=.mypy_cache",
-            "--exclude=xml/src",  # Исключаем исходники XML, оставляем build.xml
-            "--exclude=venv",     # Исключаем venv - он создается на сервере
+            "--exclude=xml/src",
+            "--exclude=venv",
         ]
 
         rsync_cmd = (
@@ -401,10 +371,9 @@ def remote_deploy(
             result = subprocess.run(rsync_cmd)
             if result.returncode != 0:
                 raise click.ClickException("Ошибка синхронизации файлов")
-            click.echo("  ✅ Файлы синхронизированы")
+            click.echo("  Файлы синхронизированы")
 
-        # 6. Создание виртуального окружения на сервере
-        click.echo("🐍 Создание виртуального окружения на сервере...")
+        click.echo("Создание виртуального окружения на сервере...")
         venv_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
             python3.8 -m venv venv" """
 
@@ -413,12 +382,11 @@ def remote_deploy(
         else:
             result = subprocess.run(venv_cmd, shell=True)
             if result.returncode == 0:
-                click.echo("  ✅ Виртуальное окружение создано")
+                click.echo("  Виртуальное окружение создано")
             else:
-                click.echo("  ⚠️  Предупреждение: ошибка создания виртуального окружения")
+                click.echo("  Предупреждение: ошибка создания виртуального окружения")
 
-        # 7. Установка зависимостей на сервере
-        click.echo("📋 Установка зависимостей...")
+        click.echo("Установка зависимостей...")
         deps_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
             source venv/bin/activate && \\
             pip install -r requirements.txt" """
@@ -428,31 +396,27 @@ def remote_deploy(
         else:
             result = subprocess.run(deps_cmd, shell=True)
             if result.returncode == 0:
-                click.echo("  ✅ Зависимости установлены")
+                click.echo("  Зависимости установлены")
             else:
-                click.echo("  ⚠️  Предупреждение: ошибка установки зависимостей")
+                click.echo("  Предупреждение: ошибка установки зависимостей")
 
-        # 7.1. Установка пакета billmgr_addon на сервере
-        click.echo("📦 Установка пакета billmgr_addon на сервере...")
+        # TODO: Установка пакета billmgr_addon на сервере, Позже удалить
+        click.echo("Установка пакета billmgr_addon на сервере...")
 
-        # Определяем путь к исходному коду billmgr_addon
-        # Ищем папку base-addon в системе
         import billmgr_addon
 
-        # Получаем реальный путь к установленному пакету
         installed_path = Path(billmgr_addon.__file__).parent
 
-        # Проверяем, установлен ли пакет в editable режиме
         pth_files = list(installed_path.parent.glob("*.pth"))
         editable_path = None
 
         for pth_file in pth_files:
             try:
-                with open(pth_file, 'r') as f:
+                with open(pth_file, "r") as f:
                     content = f.read().strip()
-                    if 'billmgr_addon' in content or 'base-addon' in content:
+                    if "billmgr_addon" in content or "base-addon" in content:
                         potential_path = Path(content)
-                        if potential_path.exists() and (potential_path / 'setup.py').exists():
+                        if potential_path.exists() and (potential_path / "setup.py").exists():
                             editable_path = potential_path
                             break
             except:
@@ -460,31 +424,29 @@ def remote_deploy(
 
         if editable_path:
             local_billmgr_addon_path = editable_path
-            click.echo(f"  📁 Найден editable пакет: {local_billmgr_addon_path}")
+            click.echo(f"  Найден editable пакет: {local_billmgr_addon_path}")
         else:
-            # Fallback: ищем base-addon рядом с текущим проектом или в стандартных местах
             current_dir = Path.cwd()
             possible_paths = [
                 current_dir.parent / "base-addon",
-                current_dir.parent.parent / "base-addon", 
+                current_dir.parent.parent / "base-addon",
                 Path.home() / "PycharmProjects" / "base-addon",
                 Path("/Users") / "dmitriy" / "PycharmProjects" / "base-addon",
             ]
-            
+
             local_billmgr_addon_path = None
             for path in possible_paths:
                 if path.exists() and (path / "setup.py").exists():
                     local_billmgr_addon_path = path
                     break
-            
+
             if not local_billmgr_addon_path:
-                click.echo("  ⚠️  Не удалось найти исходники billmgr_addon")
-                click.echo("  💡 Используйте editable установку: pip install -e /path/to/base-addon")
+                click.echo("  Не удалось найти исходники billmgr_addon")
+                click.echo("  Используйте editable установку: pip install -e /path/to/base-addon")
                 return
 
-        click.echo(f"  📁 Путь к исходникам: {local_billmgr_addon_path}")
+        click.echo(f"  Путь к исходникам: {local_billmgr_addon_path}")
 
-        # Копируем исходники и устанавливаем в editable режиме (более надежный способ)
         install_cmd = f"""
         rsync -rltz --exclude=*.pyc --exclude=__pycache__ --exclude=dist --exclude=build --exclude=*.egg-info \\
             {local_billmgr_addon_path}/ {server}:{app_folder}/billmgr_addon_src/ && \\
@@ -499,12 +461,12 @@ def remote_deploy(
         else:
             result = subprocess.run(install_cmd, shell=True)
             if result.returncode == 0:
-                click.echo("  ✅ Пакет billmgr_addon установлен в editable режиме")
+                click.echo("  Пакет billmgr_addon установлен в editable режиме")
             else:
-                click.echo("  ⚠️  Предупреждение: ошибка установки пакета billmgr_addon")
-        # 8. Установка плагина
+                click.echo("  Предупреждение: ошибка установки пакета billmgr_addon")
+
         if install:
-            click.echo("⚙️  Установка плагина...")
+            click.echo("Установка плагина...")
             install_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
                 source venv/bin/activate && \\
                 billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder}" """
@@ -514,34 +476,35 @@ def remote_deploy(
             else:
                 result = subprocess.run(install_cmd, shell=True)
                 if result.returncode == 0:
-                    click.echo("  ✅ Плагин установлен")
+                    click.echo("  Плагин установлен")
                 else:
-                    click.echo("  ⚠️  Предупреждение: ошибка установки плагина")
+                    click.echo("  Предупреждение: ошибка установки плагина")
 
-        # 9. Перезапуск BILLmanager
-        if restart_billmgr or install:  # Перезапускаем если установили плагин или явно запрошен перезапуск
-            click.echo("🔄 Перезапуск BILLmanager...")
-            restart_cmd = f"ssh {ssh_options} {server} '/usr/local/mgr5/sbin/mgrctl -m billmgr exit'"
+        if restart_billmgr or install:
+            click.echo("Перезапуск BILLmanager...")
+            restart_cmd = (
+                f"ssh {ssh_options} {server} '/usr/local/mgr5/sbin/mgrctl -m billmgr exit'"
+            )
 
             if dry_run:
                 click.echo(f"  Команда: {restart_cmd}")
             else:
                 result = subprocess.run(restart_cmd, shell=True)
                 if result.returncode == 0:
-                    click.echo("  ✅ BILLmanager перезапущен")
+                    click.echo("  BILLmanager перезапущен")
                 else:
-                    click.echo("  ⚠️  Предупреждение: ошибка перезапуска BILLmanager")
+                    click.echo("  Предупреждение: ошибка перезапуска BILLmanager")
 
-        click.echo("🎉 Деплой завершен успешно!")
+        click.echo("Деплой завершен успешно")
 
         if not install:
-            click.echo("💡 Для установки плагина выполните:")
+            click.echo("Для установки плагина выполните:")
             click.echo(
                 f"   ssh {server} 'cd {app_folder} && source venv/bin/activate && sudo billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder}'"
             )
 
         if not restart_billmgr:
-            click.echo("💡 Для перезапуска BILLmanager выполните:")
+            click.echo("Для перезапуска BILLmanager выполните:")
             click.echo(f"   ssh {server} 'systemctl restart billmgr'")
 
     except Exception as e:

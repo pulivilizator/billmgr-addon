@@ -2,23 +2,18 @@
 # -*- coding: utf-8 -*-
 
 """
-CGI интерфейс для BILLmanager плагинов
-
-Универсальный CGI обработчик, который может быть использован любым плагином.
+CGI интерфейс для плагинов
 """
 
 import os
+import re
 import sys
 from pathlib import Path
 
 from billmgr_addon.utils.logging import LOGGER
 
-def run_with_cgi(application):
-    """
-    Запуск WSGI приложения в CGI режиме
 
-    Адаптировано из исходного cloud-infrastructure-reselling-addon/cgi.py
-    """
+def run_with_cgi(application):
     environ = dict(os.environ.items())
     environ["wsgi.input"] = sys.stdin.buffer
     environ["wsgi.errors"] = sys.stderr
@@ -56,10 +51,9 @@ def run_with_cgi(application):
         if exception:
             try:
                 if headers_sent:
-                    # Re-raise original exception if headers sent
                     raise exception
             finally:
-                exception = None  # avoid dangling circular ref
+                exception = None
         elif headers_set:
             raise AssertionError("Headers already set!")
 
@@ -79,10 +73,10 @@ def run_with_cgi(application):
 
     try:
         for data in result:
-            if data:  # don't send headers until body appears
+            if data:
                 write(data)
         if not headers_sent:
-            write(b"")  # send headers now if body was empty
+            write(b"")
     finally:
         if hasattr(result, "close"):
             result.close()
@@ -91,17 +85,9 @@ def run_with_cgi(application):
 
 
 def create_cgi_app_from_module(module_name):
-    """
-    Создать CGI приложение из модуля проекта
-
-    Args:
-        module_name: Имя модуля проекта (например, 'my_plugin')
-    """
     try:
-        # Импортируем модуль проекта
         project_module = __import__(module_name)
 
-        # Пробуем найти функцию создания CGI приложения
         if hasattr(project_module, "create_cgi_app"):
             return project_module.create_cgi_app()
         elif hasattr(project_module, "app"):
@@ -112,25 +98,18 @@ def create_cgi_app_from_module(module_name):
             )
 
     except ImportError:
-        # Fallback - создаем простое приложение
         from billmgr_addon import create_cgi_app
 
         return create_cgi_app([])
 
 
 def main():
-    """Главная функция CGI интерфейса"""
-    # Определяем имя проекта из переменной окружения или из директории
     project_name = os.environ.get("PLUGIN_NAME")
 
     if not project_name:
-        # Пробуем определить из текущей директории
         cwd = Path.cwd()
         if (cwd / "setup.py").exists():
-            # Читаем setup.py чтобы найти имя пакета
             try:
-                import re
-
                 setup_content = (cwd / "setup.py").read_text()
                 match = re.search(r"name=['\"]([^'\"]+)['\"]", setup_content)
                 if match:
@@ -141,14 +120,12 @@ def main():
         if not project_name:
             project_name = cwd.name.replace("-", "_")
 
-    # Добавляем текущую директорию в Python path
     sys.path.insert(0, str(Path.cwd()))
 
     try:
         app = create_cgi_app_from_module(project_name)
         run_with_cgi(app)
     except Exception as e:
-        # Последний fallback - возвращаем простую ошибку
         print("Content-Type: text/html; charset=utf-8")
         print()
         print(f"<html><body><h1>Plugin Error</h1><p>{e}</p></body></html>")

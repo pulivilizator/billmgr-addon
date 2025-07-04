@@ -4,9 +4,9 @@
 Пример плагина для демонстрации WSGI развертывания
 """
 
-from billmgr_addon import get_db
+from billmgr_addon import MgrOkResponse, get_db
 from billmgr_addon.core.request_types import MgrRequest
-from billmgr_addon.core.response import MgrErrorResponse, MgrSuccessResponse
+from billmgr_addon.core.response import MgrErrorResponse
 
 # Импортируем базовые классы напрямую для избежания проблем с линтером
 from billmgr_addon.core.router import ActionEndpoint, FormEndpoint, ListEndpoint
@@ -97,7 +97,7 @@ class ServerForm(FormEndpoint):
         # db = get_db('billmgr')
         # db.insert_query(...)
 
-        return MgrSuccessResponse(msg="Сервер успешно создан")
+        return MgrOkResponse(msg="Сервер успешно создан")
 
 
 class ServerRestart(ActionEndpoint):
@@ -111,7 +111,7 @@ class ServerRestart(ActionEndpoint):
         # Здесь бы выполняли действие через API
         # await restart_server(server_id)
 
-        return MgrSuccessResponse(msg=f"Сервер {server_id} перезапускается")
+        return MgrOkResponse(msg=f"Сервер {server_id} перезапускается")
 
 
 class HealthCheck(ActionEndpoint):
@@ -130,7 +130,7 @@ class HealthCheck(ActionEndpoint):
             checks["status"] = "unhealthy"
 
         if checks["status"] == "healthy":
-            return MgrSuccessResponse(msg="OK", data=checks)
+            return MgrOkResponse(msg="OK", data=checks)
         else:
             return MgrErrorResponse(msg="Health check failed", data=checks)
 

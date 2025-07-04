@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Генератор шаблонов проектов для BILLmanager плагинов
+Генератор шаблонов проектов для плагинов
 """
 
 from .project_scaffold import ProjectScaffold

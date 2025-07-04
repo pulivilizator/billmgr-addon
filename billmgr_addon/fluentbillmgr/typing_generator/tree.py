@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
-from app.fluentbillmgr.typing_generator.translation_dto import Translation
 from ordered_set import OrderedSet
+
+from .translation_dto import Translation
 
 
 @dataclass

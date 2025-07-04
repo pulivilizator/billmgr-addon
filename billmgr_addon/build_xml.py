@@ -3,11 +3,9 @@
 
 """
 Сборщик XML конфигурации для BILLmanager плагинов
-
-Универсальный сборщик XML файлов с поддержкой импортов.
-Адаптирован из cloud-infrastructure-reselling-addon/build_xml.py
 """
 
+import argparse
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -15,7 +13,6 @@ from xml.etree.ElementTree import Element
 
 
 def get_entry_from_file(entry_path) -> "XmlEntry":
-    """Получить XML запись из файла"""
     if not Path(entry_path).is_absolute():
         sys.exit(f"Entry file path {entry_path} must be absolute")
 
@@ -37,8 +34,6 @@ def get_entry_from_file(entry_path) -> "XmlEntry":
 
 
 class XmlEntry:
-    """Класс для работы с XML записями и импортами"""
-
     def __init__(self, absolute_path, root_element, parent_entry: "XmlEntry" = None):
         self.path: Path = absolute_path
         self.root: Element = root_element
@@ -48,7 +43,6 @@ class XmlEntry:
         self.import_element_index: int = None
 
     def has_parent_path(self, path):
-        """Проверить наличие циклической зависимости"""
         current_parent = self.parent
         has_path = False
         while current_parent is not None and not has_path:
@@ -58,7 +52,6 @@ class XmlEntry:
         return has_path
 
     def execute_import(self, xml_src_path):
-        """Выполнить импорт зависимостей"""
         if self.is_import_executed:
             print("Import can be executed only once per entry")
             return
@@ -104,7 +97,6 @@ class XmlEntry:
                 if not import_file_path.is_file():
                     raise FileNotFoundError()
 
-                # Проверяем что файл находится внутри xml_src_path
                 is_relative = (
                     xml_src_path == import_file_path or xml_src_path in import_file_path.parents
                 )
@@ -126,7 +118,6 @@ class XmlEntry:
             child_entry.import_element_index = import_element_index
             child_entry.execute_import(xml_src_path)
 
-            # Заменяем import элементы на содержимое импортированных файлов
             self.root.remove(import_element)
             index_counter = 0
             for child_element in list(child_entry.root):
@@ -148,12 +139,6 @@ class XmlEntry:
 
 
 def build_xml(project_root=None):
-    """
-    Собрать XML конфигурацию
-
-    Args:
-        project_root: Корневая директория проекта (по умолчанию текущая)
-    """
     if project_root is None:
         project_root = Path.cwd()
     else:
@@ -163,20 +148,16 @@ def build_xml(project_root=None):
     xml_build_path = project_root / "xml" / "build.xml"
     main_entry_path = xml_src_path / "main.xml"
 
-    # Проверяем наличие необходимых файлов
     if not main_entry_path.exists():
         sys.exit(f"Main XML file not found: {main_entry_path}")
 
-    # Создаем директорию для результата
     xml_build_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Building XML from {xml_src_path}...")
 
-    # Обрабатываем главный файл
     main_entry = get_entry_from_file(main_entry_path)
     main_entry.execute_import(xml_src_path)
 
-    # Сохраняем результат
     ET.ElementTree(main_entry.root).write(
         xml_build_path, encoding="UTF-8", method="xml", xml_declaration=True
     )
@@ -186,9 +167,6 @@ def build_xml(project_root=None):
 
 
 def main():
-    """Главная функция сборщика XML"""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Build XML configuration for BILLmanager plugin")
     parser.add_argument("--project-root", help="Project root directory", default=".")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")

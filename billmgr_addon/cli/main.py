@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import click
 import os
-import sys
 from pathlib import Path
 
+import click
+
 from ..scaffold import ProjectScaffold
-from ..utils.files import create_plugin_symlinks, create_processing_module_symlinks
+from ..utils.files import create_plugin_symlinks
 from .deploy import deploy as deploy_commands
 
 
@@ -18,32 +18,30 @@ def main():
 
 
 @main.command()
-@click.option('--name', help='Имя проекта (по умолчанию: имя текущей директории)')
-@click.option('--path', help='Путь для создания проекта (если не указан, создается в текущей директории)')
-@click.option('--template', default='basic', help='Шаблон проекта')
+@click.option("--name", help="Имя проекта (по умолчанию: имя текущей директории)")
+@click.option(
+    "--path", help="Путь для создания проекта (если не указан, создается в текущей директории)"
+)
+@click.option("--template", default="basic", help="Шаблон проекта")
 def create_project(name: str, path: str, template: str):
     """Создать новый проект плагина"""
-    
-    # Определяем имя проекта
+
     if name:
         project_name = name
     else:
-        # Используем имя текущей директории
         project_name = Path.cwd().name
-        if project_name in ['.', '', '/']:
-            project_name = 'my-plugin'
-    
+        if project_name in [".", "", "/"]:
+            project_name = "my-plugin"
+
     if path:
-        # Если указан путь, создаем папку с именем проекта
         project_path = Path(path) / project_name
         click.echo(f"Создание проекта '{project_name}' в '{project_path}'...")
     else:
-        # Если путь не указан, создаем в текущей директории
-        project_path = Path('.')
+        project_path = Path()
         click.echo(f"Создание проекта '{project_name}' в текущей директории...")
-    
+
     scaffold = ProjectScaffold(project_name, project_path, template)
-    
+
     try:
         scaffold.create()
         click.echo(f"Проект '{project_name}' успешно создан!")
@@ -52,8 +50,8 @@ def create_project(name: str, path: str, template: str):
         else:
             click.echo(f"Путь: {project_path.absolute()}")
         click.echo()
-        
-        plugin_name_norm = project_name.lower().replace('-', '_')
+
+        plugin_name_norm = project_name.lower().replace("-", "_")
 
         click.echo("Следующие шаги:")
         if path:
@@ -65,93 +63,61 @@ def create_project(name: str, path: str, template: str):
         click.echo("  # Настроить deploy.toml (пример в deploy.example.toml)")
         click.echo(f"  billmgr-addon deploy remote-deploy -e dev --plugin-name {plugin_name_norm}")
     except Exception as e:
-        click.echo(f"❌ Ошибка создания проекта: {e}")
+        click.echo(f"Ошибка создания проекта: {e}")
         raise click.Abort()
 
 
 @main.command()
-@click.option('--plugin-name', required=True, help='Имя плагина')
+@click.option("--plugin-name", required=True, help="Имя плагина")
 def install(plugin_name: str):
     """Установить плагин в BILLmanager"""
     click.echo(f"Установка плагина '{plugin_name}' в BILLmanager...")
-    
+
     try:
-        # Проверяем права доступа
         mgr_path = Path("/usr/local/mgr5")
         if not mgr_path.exists():
             raise click.ClickException("BILLmanager не найден в системе")
-        
+
         if not os.access(mgr_path, os.W_OK):
             raise click.ClickException("Недостаточно прав для установки. Запустите с sudo.")
-        
-        # Создаем ссылки
+
         links = create_plugin_symlinks(plugin_name)
-        
-        click.echo("✅ Ссылки созданы:")
+
+        click.echo("Ссылки созданы:")
         for link_type, link_path in links.items():
             click.echo(f"  {link_type}: {link_path}")
-        
+
         click.echo()
         click.echo("Для применения изменений выполните:")
         click.echo("  systemctl restart billmgr")
-        
+
     except Exception as e:
-        click.echo(f"❌ Ошибка установки: {e}")
+        click.echo(f"Ошибка установки: {e}")
         raise click.Abort()
 
 
 @main.command()
-@click.option('--module-name', required=True, help='Имя модуля обработки')
-def install_processing_module(module_name: str):
-    """Установить модуль обработки в BILLmanager"""
-    click.echo(f"Установка модуля обработки '{module_name}' в BILLmanager...")
-    
-    try:
-        # Проверяем права доступа
-        mgr_path = Path("/usr/local/mgr5")
-        if not mgr_path.exists():
-            raise click.ClickException("BILLmanager не найден в системе")
-        
-        if not os.access(mgr_path, os.W_OK):
-            raise click.ClickException("Недостаточно прав для установки. Запустите с sudo.")
-        
-        # Создаем ссылки
-        links = create_processing_module_symlinks(module_name)
-        
-        click.echo("✅ Ссылки созданы:")
-        for link_type, link_path in links.items():
-            click.echo(f"  {link_type}: {link_path}")
-        
-        click.echo()
-        click.echo("Для применения изменений выполните:")
-        click.echo("  systemctl restart billmgr")
-        
-    except Exception as e:
-        click.echo(f"❌ Ошибка установки: {e}")
-        raise click.Abort()
-
-
-@main.command()
-@click.option('--xml-path', type=click.Path(exists=True, file_okay=False, path_type=Path), 
-              help='Путь к папке xml (по умолчанию ./xml)')
+@click.option(
+    "--xml-path",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Путь к папке xml (по умолчанию ./xml)",
+)
 def build_xml(xml_path):
     """Собрать XML файлы плагина"""
     from ..utils.xml_builder import XMLBuilder
-    
+
     if xml_path:
         click.echo(f"Сборка XML файлов из {xml_path}...")
-        # xml_path указывает на папку xml, src находится внутри неё
-        src_path = xml_path / 'src'
-        build_path = xml_path / 'build.xml'
-        
-        # Проверяем, что папка src существует
+        src_path = xml_path / "src"
+        build_path = xml_path / "build.xml"
+
         if not src_path.exists():
             raise click.ClickException(f"Папка src не найдена в {xml_path}")
     else:
         click.echo("Сборка XML файлов...")
-        src_path = None  # Использовать значения по умолчанию
+        src_path = None
         build_path = None
-    
+
     try:
         builder = XMLBuilder(src_path=src_path, build_path=build_path)
         output_path = builder.build()
@@ -164,5 +130,5 @@ def build_xml(xml_path):
 main.add_command(deploy_commands)
 
 
-if __name__ == '__main__':
-    main() 
+if __name__ == "__main__":
+    main()

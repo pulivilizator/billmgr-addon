@@ -3,9 +3,10 @@ import time
 from pathlib import Path
 from typing import Union
 
-from app.fluentbillmgr.typing_generator import ParsedRawFTL, Stubs, Tree
 from watchdog.events import FileModifiedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+
+from ..typing_generator import ParsedRawFTL, Stubs, Tree
 
 
 class FtlFileEventHandler(FileSystemEventHandler):
