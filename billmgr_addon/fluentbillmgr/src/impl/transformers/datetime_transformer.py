@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Union
 
-from app.fluentbillmgr.src.abc import AbstractDataTransformer
+from ...abc import AbstractDataTransformer
 from fluent_compiler.types import FluentDateType, FluentNone, fluent_date
 
 

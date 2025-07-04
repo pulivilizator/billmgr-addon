@@ -1,9 +1,9 @@
 # coding=utf-8
 from typing import Dict, Iterable, List, Union
 
-from app.fluentbillmgr.exceptions import NotImplementedRootLocaleTranslator
-from app.fluentbillmgr.src.abc import AbstractTranslator, AbstractTranslatorsHub
-from app.fluentbillmgr.src.impl import TranslatorRunner
+from ....exceptions import NotImplementedRootLocaleTranslator
+from ...abc import AbstractTranslator, AbstractTranslatorsHub
+from ...impl import TranslatorRunner
 
 
 class TranslatorHub(AbstractTranslatorsHub):

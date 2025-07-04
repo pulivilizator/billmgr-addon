@@ -2,7 +2,7 @@
 from decimal import Decimal
 from typing import Literal, Optional, Union
 
-from app.fluentbillmgr.src.abc import AbstractDataTransformer
+from ...abc import AbstractDataTransformer
 from fluent_compiler.types import FluentNone, FluentNumber, fluent_number
 
 
