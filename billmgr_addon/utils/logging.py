@@ -17,7 +17,7 @@ def _create_default_logger():
     if logger.handlers and logger.level != logging.NOTSET:
         return logger
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)

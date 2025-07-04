@@ -108,6 +108,11 @@ class MgrList(MgrUI):
         # if parent_list_id is not None:
         #     ET.SubElement(self.root, 'plid').text = str(parent_list_id)
 
+    def set_parent_id_from_request(self, mgr_request):
+        """Установить parent_id из параметров запроса"""
+        self.parent_id = mgr_request.params.get("elid")
+        self.parent_name = mgr_request.params.get("elname")
+
     def patch_xml(self):
         self.metadata_element.append(self.toolbar.to_xml())
         columns_data_element = ET.SubElement(self.metadata_element, "coldata")

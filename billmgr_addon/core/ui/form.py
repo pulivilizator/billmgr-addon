@@ -10,7 +10,7 @@ from typing import List, NamedTuple, Optional, Union
 from uuid import UUID
 from xml.etree.ElementTree import Element
 
-from . import MgrUI, MgrUnknownNode
+from .ui import MgrUI, MgrUnknownNode
 
 
 class UuidOptionValueError(ValueError):
