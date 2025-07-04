@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from typing import List, Union
 from xml.etree.ElementTree import Element
 
-from . import MgrUI
+from .ui import MgrUI
 
 
 class MgrList(MgrUI):
