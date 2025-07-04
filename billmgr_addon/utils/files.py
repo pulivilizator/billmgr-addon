@@ -4,9 +4,32 @@ import os
 from pathlib import Path
 from typing import Optional, Union
 
-# Базовые пути для проекта - определяем относительно расположения этого файла
-# Это позволяет работать независимо от текущей рабочей директории
-cwd_path = Path(__file__).resolve().parent.parent.parent
+def get_project_root() -> Path:
+    """
+    Определяем корневую директорию проекта с приоритетами:
+    1. Переменная окружения BILLMGR_ADDON_PROJECT_ROOT
+    2. Поиск по структуре проекта (config.toml + xml/ + app/)
+    3. Текущая рабочая директория (fallback)
+    """
+    # 1. Проверяем переменную окружения
+    env_project_root = os.environ.get('BILLMGR_ADDON_PROJECT_ROOT')
+    if env_project_root:
+        return Path(env_project_root).resolve()
+    
+    # 2. Ищем по структуре проекта
+    current = Path.cwd()
+    while current != current.parent:
+        if ((current / "config.toml").exists() and 
+            (current / "xml").exists() and 
+            (current / "app").exists()):
+            return current
+        current = current.parent
+    
+    # 3. Fallback на текущую директорию
+    return Path.cwd()
+
+# Базовые пути для проекта
+cwd_path = get_project_root()
 interpreter_path = cwd_path.joinpath("venv/bin/python3")
 config_path = cwd_path.joinpath("config.toml")
 public_path = cwd_path.joinpath("public")
