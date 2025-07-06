@@ -64,7 +64,49 @@ pip install -e ".[pymysql]"
 pip install -e ".[mysqlclient]"
 ```
 
-### 3. Конфигурация
+### 3. Настройка путей (опционально)
+
+Для настройки путей к конфигурации, логам и другим ресурсам создайте файл `settings.py`:
+
+```python
+"""
+Настройки путей для плагина.
+"""
+
+# Корневая директория проекта
+PROJECT_ROOT = "."
+
+# Путь к файлу конфигурации
+CONFIG_PATH = "config.toml"
+
+# Путь к директории с публичными файлами
+PUBLIC_PATH = "public"
+
+# Путь к директории с логами
+LOGS_PATH = "logs"
+```
+
+**Примеры настроек для разных сценариев:**
+
+```python
+# Для разработки (по умолчанию)
+PROJECT_ROOT = "."
+CONFIG_PATH = "config.toml"
+LOGS_PATH = "logs"
+
+# Для продакшена с абсолютными путями
+PROJECT_ROOT = "/usr/local/mgr5/addon/myplugin"
+CONFIG_PATH = "/usr/local/mgr5/addon/myplugin/config.toml"
+LOGS_PATH = "/var/log/mgr5/myplugin"
+
+# Автоматическое определение путей
+import os
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(PROJECT_ROOT, "config.toml")
+LOGS_PATH = os.path.join(PROJECT_ROOT, "logs")
+```
+
+### 4. Конфигурация
 
 Скопируйте `config.example.toml` в `config.toml` и настройте параметры:
 

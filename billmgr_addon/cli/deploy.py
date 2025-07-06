@@ -343,7 +343,7 @@ def remote_deploy(
         for pattern in ["*.py", "*.toml"]:
             files_to_sync.extend(glob.glob(pattern))
 
-        for file_name in ["requirements.txt", "README.md"]:
+        for file_name in ["requirements.txt", "README.md", "cgi.py", "settings.py", "build_xml.py", "cli.py"]:
             if Path(file_name).exists():
                 files_to_sync.append(file_name)
 
