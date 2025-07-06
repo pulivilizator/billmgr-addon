@@ -79,13 +79,26 @@ def setup_logger(
 
     if enable_file:
         if path is None:
-            base_path = Path.cwd()
-            logs_path = base_path / "logs"
+            # Используем новую систему определения путей через settings.py
+            try:
+                from billmgr_addon.core.config import get_logs_path_cached
+                logs_path = get_logs_path_cached()
+            except ImportError:
+                # Fallback на старую систему если новая не доступна
+                base_path = Path.cwd()
+                logs_path = base_path / "logs"
         elif isinstance(path, str):
             if Path(path).is_absolute():
                 logs_path = Path(path)
             else:
-                logs_path = Path.cwd() / path
+                # Используем новую систему для относительных путей
+                try:
+                    from billmgr_addon.core.config import get_project_root_cached
+                    project_root = get_project_root_cached()
+                    logs_path = project_root / path
+                except ImportError:
+                    # Fallback на старую систему
+                    logs_path = Path.cwd() / path
         else:
             logs_path = Path(path)
 

@@ -386,4 +386,22 @@ def get_config() -> Config:
     return _config
 
 
-__all__ = ["Config", "create_default_config", "init_config_from_flask", "get_config"]
+__all__ = [
+    "Config", 
+    "create_default_config", 
+    "init_config_from_flask", 
+    "get_config",
+    "get_project_root",
+    "get_config_path", 
+    "get_logs_path",
+    "get_public_path",
+    "get_project_root_cached",
+    "get_config_path_cached",
+    "get_logs_path_cached", 
+    "get_public_path_cached",
+    "load_config",
+    "cwd_path",
+    "config_path",
+    "public_path", 
+    "logs_path"
+]
