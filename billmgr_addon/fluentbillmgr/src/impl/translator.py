@@ -1,7 +1,8 @@
 # coding=utf-8
 
-from ..abc import AbstractTranslator
 from fluent_compiler.bundle import FluentBundle
+
+from ..abc import AbstractTranslator
 
 
 class FluentTranslator(AbstractTranslator):

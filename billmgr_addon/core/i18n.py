@@ -1,8 +1,8 @@
-
 from types import SimpleNamespace
 from typing import Callable
 
 from flask import Flask, current_app
+
 from billmgr_addon.utils.logging import LOGGER
 
 from ..fluentbillmgr import TranslatorHub, TranslatorRunner

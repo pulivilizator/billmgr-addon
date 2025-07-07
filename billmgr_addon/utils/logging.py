@@ -6,6 +6,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, Union
 
+from billmgr_addon.core.config import get_logs_path_cached, get_project_root_cached
+
 LOGGER_NAME = "billmgr_addon"
 LOGGER = None
 
@@ -19,8 +21,6 @@ def _create_default_logger():
 
     logger.setLevel(logging.DEBUG)
 
-    # Убираем вывод в STDOUT по умолчанию для совместимости с BILLmanager
-    # Логгер будет настроен позже через setup_logger или переназначение
     logger.propagate = False
 
     return logger
@@ -79,25 +79,19 @@ def setup_logger(
 
     if enable_file:
         if path is None:
-            # Используем новую систему определения путей через settings.py
             try:
-                from billmgr_addon.core.config import get_logs_path_cached
                 logs_path = get_logs_path_cached()
             except ImportError:
-                # Fallback на старую систему если новая не доступна
                 base_path = Path.cwd()
                 logs_path = base_path / "logs"
         elif isinstance(path, str):
             if Path(path).is_absolute():
                 logs_path = Path(path)
             else:
-                # Используем новую систему для относительных путей
                 try:
-                    from billmgr_addon.core.config import get_project_root_cached
                     project_root = get_project_root_cached()
                     logs_path = project_root / path
                 except ImportError:
-                    # Fallback на старую систему
                     logs_path = Path.cwd() / path
         else:
             logs_path = Path(path)

@@ -11,9 +11,9 @@
 """
 
 from types import SimpleNamespace
+
 import tomlkit
 from Crypto.PublicKey import RSA
-
 from flask import Flask, appcontext_pushed, g
 from flask_login import LoginManager
 
@@ -93,16 +93,15 @@ def create_common_app():
 
     app.config.from_file(config_path, load=tomlkit.load)
 
-    is_debugging = app.config.get('DEBUG', False)
+    is_debugging = app.config.get("DEBUG", False)
 
     app.json_encoder = CustomJSONEncoder
-    app.mgr_encryption_key = RSA.importKey(open('/usr/local/mgr5/etc/billmgr.pem').read())
+    app.mgr_encryption_key = RSA.importKey(open("/usr/local/mgr5/etc/billmgr.pem").read())
 
-    billmgr_db_config = DBConfig.from_panel_name('billmgr')
+    billmgr_db_config = DBConfig.from_panel_name("billmgr")
 
     FlaskDbExtension().init_app(app)
-    FlaskDbExtension() \
-        .init_app(app, billmgr_db_config, alias='billmgr')
+    FlaskDbExtension().init_app(app, billmgr_db_config, alias="billmgr")
 
     # FIXME - make simpler Celery setup
     # celery_app_name = 'cloud_addon'
@@ -122,8 +121,8 @@ def create_common_app():
     #     'cert_reqs': ssl.CERT_REQUIRED
     # })
 
-
     return app
+
 
 def create_app(endpoints) -> Flask:
     app = create_common_app()
@@ -140,6 +139,7 @@ def create_app(endpoints) -> Flask:
     # app.register_blueprint(main_bp)
 
     return app
+
 
 def create_cgi_app(endpoints):
     """

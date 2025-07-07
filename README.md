@@ -1,29 +1,21 @@
-# BILLmanager Addon Framework
-
-Универсальная Python-библиотека для создания плагинов BILLmanager.
-
-📖 **Новичок?** Начните с [Руководства разработчика](DEVELOPER_GUIDE.md) - подробного пошагового туториала по созданию вашего первого плагина.
-
 ## Описание
 
-BILLmanager Addon Framework предоставляет готовый набор инструментов для разработки плагинов биллинга:
-
 - **Ядро плагина** - система маршрутизации, эндпоинтов и UI компонентов
-- **Работа с БД** - удобная интеграция с базой данных BILLmanager
-- **Авторизация** - готовая система авторизации через сессии биллинга
+- **Работа с БД** - интеграция с базой данных BILLmanager
+- **Авторизация** - система авторизации через сессии биллинга
 - **CLI инструменты** - команды для создания проектов и установки
-- **Генератор проектов** - быстрое создание базовой структуры плагина
-- **XML сборка** - автоматическая сборка XML конфигурации
+- **Генератор проектов** - создание базовой структуры плагина
+- **XML сборка** - сборка XML конфигурации
 
 ## Установка
 
 ### Из Git репозитория
 
 ```bash
-# Основная версия с PyMySQL (рекомендуется для разработки)
+# Версия с PyMySQL
 pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[pymysql]"
 
-# С mysqlclient (для продакшена, требует системные библиотеки MySQL)
+# С mysqlclient
 pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[mysqlclient]"
 
 # Минимальная установка (без MySQL драйверов)
@@ -44,25 +36,21 @@ pip install -e ".[dev,pymysql]"
 
 ## Быстрый старт
 
-### 1. Создание нового проекта
-
-```bash
-billmgr-addon create-project my-plugin
-cd my-plugin
-```
-
-### 2. Настройка окружения
+### 1. Настройка окружения
 
 ```bash
 python -m venv venv
 source venv/bin/activate
-
-# Установка зависимостей проекта с PyMySQL (рекомендуется)
-pip install -e ".[pymysql]"
-
-# Альтернативно: установка с mysqlclient (требует системные библиотеки)
-pip install -e ".[mysqlclient]"
+pip install "git+ssh://git@github.com/path/billmgr-addon.git"
 ```
+
+### 2. Создание нового проекта
+
+```bash
+billmgr-addon create-project
+```
+
+
 
 ### 3. Настройка путей (опционально)
 
@@ -86,40 +74,21 @@ PUBLIC_PATH = "public"
 LOGS_PATH = "logs"
 ```
 
-**Примеры настроек для разных сценариев:**
-
-```python
-# Для разработки (по умолчанию)
-PROJECT_ROOT = "."
-CONFIG_PATH = "config.toml"
-LOGS_PATH = "logs"
-
-# Для продакшена с абсолютными путями
-PROJECT_ROOT = "/usr/local/mgr5/addon/myplugin"
-CONFIG_PATH = "/usr/local/mgr5/addon/myplugin/config.toml"
-LOGS_PATH = "/var/log/mgr5/myplugin"
-
-# Автоматическое определение путей
-import os
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(PROJECT_ROOT, "config.toml")
-LOGS_PATH = os.path.join(PROJECT_ROOT, "logs")
-```
-
 ### 4. Конфигурация
 
-Скопируйте `config.example.toml` в `config.toml` и настройте параметры:
+Скопируйте `config.example.toml` в `config.toml` и настройте параметры.
 
-```toml
-DEBUG = false
-FORWARDED_SECRET = 'SECRET_FROM_BILLMGR_CONF'
-BILLMGR_API_URL = 'https://localhost:1500/billmgr'
+### 5. Установка в BILLmanager
+
+- Для установки с локального ПК необходимо заполнить файл `deploy.toml` и выполнить команду 
+```bash
+billmgr-addon deploy remote-deploy -e dev/prod --plugin-name PLUGIN_NAME
 ```
 
-### 4. Установка в BILLmanager
+- Для установки без деплоя(находясь на сервере)
 
 ```bash
-sudo billmgr-addon install --plugin-name my_plugin
+sudo billmgr-addon install --plugin-name PLUGIN_NAME
 sudo systemctl restart billmgr
 ```
 
@@ -139,10 +108,8 @@ my-plugin/
 │   └── src/
 │       ├── main.xml
 │       └── example_list.xml
-├── tests/                  # Тесты
 ├── cgi.py                  # CGI точка входа
 ├── cli.py                  # CLI точка входа
-├── wsgi.py                 # WSGI точка входа
 ├── config.example.toml     # Пример конфигурации
 └── setup.py               # Настройки пакета
 ```
@@ -164,21 +131,6 @@ class MyList(ListEndpoint):
         return mgr_list
 ```
 
-### Формы
-
-```python
-from billmgr_addon import FormEndpoint, MgrForm, MgrRequest
-
-class MyForm(FormEndpoint):
-    async def get(self, form: MgrForm, mgr_request: MgrRequest):
-        # Настройка формы
-        return form
-    
-    async def setvalues(self, form: MgrForm, mgr_request: MgrRequest):
-        # Обработка отправки формы
-        return form
-```
-
 ### Работа с БД
 
 ```python
@@ -192,62 +144,27 @@ def get_items():
     """, {"status": "active"}).all()
 ```
 
-### Продвинутое логгирование
+### Логгирование
 
-Библиотека предоставляет мощную систему логгирования с поддержкой файлов, ротации логов и гибких настроек:
-
-```python
-from billmgr_addon import setup_logger
-
-# Базовая настройка логгера
-logger = setup_logger(
-    name="my_plugin",
-    filename="my_plugin.log",
-    debug=True,
-    enable_console=True,
-    enable_file=True
-)
-
-logger.info("Плагин запущен")
-logger.error("Произошла ошибка")
-
-```
-
-**Возможности логгирования:**
-- **Ротация файлов** - автоматическое архивирование больших логов
-- **Гибкие форматы** - детальные логи в файлах, краткие в консоли
-- **Настройка уровней** - DEBUG, INFO, WARNING, ERROR
-- **Flask интеграция** - поддержка Flask logger через `get_flask_logger()`
-- **Продакшен готовность** - настройки для серверного окружения
-- **Автоматическое создание папок** - `logs/` создается автоматически
-
-**Форматы логов:**
-- Файлы: `2025-07-02 12:47:16,395 INFO: Сообщение [in /path/file.py:123]`
-- Консоль: `2025-07-02 12:47:16,395 - my_plugin - INFO - Сообщение`
-- Flask команды: `INFO: Сообщение`
-
-**Настройки по умолчанию:**
-- Файлы логов: `./logs/app.log`
-- Ротация: 10MB, 5 резервных файлов
-- Кодировка: UTF-8
-- Консоль + файл: включены
-
-### Сервисы
+Логгирование конфигурируется встроенной функцией setup_logger(как вариант), и можно переназначить переменную billmgr-addon.LOGGER чтоб видеть логи пакета billmgr-addon.
 
 ```python
-class MyService:
-    def get_data(self):
-        # Бизнес-логика
-        return []
+    logger = setup_logger(
+        name=billmgr_addon.LOGGER_NAME,
+        path=None,
+        filename='app.log', 
+        debug=False, 
+        remove_default_handlers=True,
+        enable_console=False
+    )
     
-    def create_item(self, name: str):
-        # Создание элемента
-        pass
+    
+    billmgr_addon.LOGGER = logger
 ```
 
 ### Расширение эндпоинтов для специфичных задач
 
-Если вашему плагину нужна дополнительная авторизация или обработка (например, проверка проектов, подписок), рекомендуется создавать собственные базовые классы:
+Если плагину нужна дополнительная авторизация или обработка (например, проверка проектов, подписок), можно создать базовые классы:
 
 ```python
 from billmgr_addon import MgrEndpoint, get_db, MgrErrorResponse
@@ -278,14 +195,11 @@ class MyCloudEndpoint(ProjectRequiredEndpoint):
         return f"Project: {mgr_request.project_id}"
 ```
 
-**Преимущества такого подхода:**
-- Полный контроль над логикой авторизации
-- Адаптация под конкретную схему БД
-- Обработка специфичных ошибок вашего API
-- Простота понимания и модификации
-
 
 ## CLI команды
+
+У всех команд есть флаг `--help`
+Подробнее с командами можно ознакомиться в [deploy.py](./billmgr_addon/cli/deploy.py) и [main.py](./billmgr_addon/cli/main.py)
 
 ### Создание проекта
 
@@ -306,49 +220,16 @@ billmgr-addon build-xml [--xml-path PATH]
 Опции:
 - `--xml-path` - путь к папке xml (по умолчанию `./xml`)
 
-Примеры:
-```bash
-# Сборка из стандартной папки ./xml/src
-billmgr-addon build-xml
-
-# Сборка из кастомной папки
-billmgr-addon build-xml --xml-path /path/to/my-xml-folder
-```
-
 ### Локальная установка плагина
 
 ```bash
 sudo billmgr-addon install --plugin-name my_plugin
 ```
 
-Устанавливает плагин в локальный BILLmanager. Создает ссылки:
+Устанавливает плагин в BILLmanager. Создает ссылки:
 - `/usr/local/mgr5/addon/my_plugin` → CGI обработчик
 - `/usr/local/mgr5/cgi/my_plugin` → дублирующая ссылка  
 - `/usr/local/mgr5/etc/xml/billmgr_mod_my_plugin.xml` → XML конфигурация
-
-**Откуда берет данные:**
-- Пути проекта: из текущей директории (должен выполняться в корне проекта)
-- Пути BILLmanager: фиксированные `/usr/local/mgr5/`
-- Интерпретатор Python: `./venv/bin/python3`
-
-### Установка модуля обработки
-
-```bash
-sudo billmgr-addon install-processing-module --module-name my_module
-```
-
-Устанавливает модуль обработки услуг. Создает ссылки:
-- `/usr/local/mgr5/processing/pmmy_module` → CLI обработчик
-- `/usr/local/mgr5/etc/xml/billmgr_mod_pmmy_module.xml` → XML конфигурация
-
-**Структура файлов для processing module:**
-```
-my-plugin/
-├── processing_module_cli.py    # CLI точка входа  
-├── xml/processing_module.xml   # XML конфигурация
-└── my_plugin/
-    └── processing_module.py    # Реализация команд
-```
 
 ## Команды деплоя
 
@@ -383,27 +264,11 @@ billmgr-addon deploy status --plugin-name my_plugin
 Показывает статус установки плагина:
 ```
 Статус плагина my_plugin:
-  ✓ Addon handler: /usr/local/mgr5/addon/my_plugin
-  ✓ CGI handler: /usr/local/mgr5/cgi/my_plugin  
-  ✓ XML config: /usr/local/mgr5/etc/xml/billmgr_mod_my_plugin.xml
+  Addon handler: /usr/local/mgr5/addon/my_plugin
+  CGI handler: /usr/local/mgr5/cgi/my_plugin  
+  XML config: /usr/local/mgr5/etc/xml/billmgr_mod_my_plugin.xml
 Плагин полностью установлен
 ```
-
-### Сборка XML в команде деплоя
-
-```bash
-billmgr-addon deploy build-xml [--xml-path PATH]
-```
-
-Альтернативная команда для сборки XML с теми же возможностями, что и основная команда `build-xml`.
-
-### Сервер разработки
-
-```bash
-billmgr-addon deploy dev-server [--host=localhost] [--port=5000] [--debug]
-```
-
-Запускает Flask сервер для отладки плагина без установки в BILLmanager.
 
 ### Удаленный деплой
 
@@ -444,83 +309,6 @@ app_folder = "/opt/my-plugin"
 ssh_options = "-A -i ~/.ssh/production_key"
 ```
 
-Пример использования:
-
-```bash
-# Деплой на dev с проверкой команд
-billmgr-addon deploy remote-deploy -e dev --plugin-name my_plugin --dry-run
-
-# Деплой на prod с полной установкой
-billmgr-addon deploy remote-deploy -e prod --plugin-name my_plugin --restart-billmgr
-
-# Деплой только файлов без установки плагина
-billmgr-addon deploy remote-deploy -e staging --plugin-name my_plugin --no-install
-```
-
-### Требования для удаленного деплоя
-
-1. **SSH доступ** к серверу с ключами
-2. **rsync** на локальной машине и сервере  
-3. **Python и venv** на сервере
-4. **sudo права** для установки плагина
-5. **BILLmanager** установленный на сервере
-
-## XML конфигурация
-
-Библиотека автоматически собирает XML файлы из директории `xml/src/`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<mgrdata>
-    <handler name="my_plugin" type="xml">
-        <func name="example.list" />
-    </handler>
-
-    <mainmenu level="user">
-        <node name="my_plugin">
-            <node name="example.list" action="example.list" type="list"/>
-        </node>
-    </mainmenu>
-
-    <import path="example_list.xml"/>
-</mgrdata>
-```
-
-## Авторизация
-
-Библиотека предоставляет готовую интеграцию с системой авторизации BILLmanager:
-
-```python
-from billmgr_addon import load_billmgr_user
-
-# В конфигурации Flask-Login
-login_manager.request_loader(load_billmgr_user)
-```
-
-## WSGI интерфейс
-
-Библиотека поддерживает развертывание через WSGI для продакшен окружения:
-
-```python
-# wsgi.py
-from pathlib import Path
-from billmgr_addon import create_wsgi_app
-
-app = create_wsgi_app(
-    plugin_name='my_plugin',
-    plugin_path=Path(__file__).parent,
-    config_path=Path(__file__).parent / 'config.toml'
-)
-```
-
-Запуск через Gunicorn:
-
-```bash
-gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
-```
-
-Подробнее смотрите в [примере WSGI развертывания](examples/wsgi-deployment/).
-
 ## Расширения
 
 ### Дополнительные возможности
@@ -529,59 +317,23 @@ gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
 # Доступные extras для установки:
 
 # PyMySQL драйвер (Pure Python, простая установка)
-pip install "git+https://github.com/username/billmgr-addon.git[pymysql]"
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[pymysql]"
 
 # mysqlclient драйвер (C-extension, быстрее, но требует системные библиотеки)
-pip install "git+https://github.com/username/billmgr-addon.git[mysqlclient]"
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[mysqlclient]"
 
 # Поддержка Celery для фоновых задач
-pip install "git+https://github.com/username/billmgr-addon.git[celery]"
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[celery]"
 
 # Поддержка WebSocket
-pip install "git+https://github.com/username/billmgr-addon.git[websockets]"
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[websockets]"
 
-# Инструменты разработки (mypy, ruff, pytest)
-pip install "git+https://github.com/username/billmgr-addon.git[dev]"
+# Инструменты разработки (mypy, ruff)
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[dev]"
 
 # Полная установка со всеми возможностями
-pip install "git+https://github.com/username/billmgr-addon.git[full]"
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[full]"
 
 # Комбинирование extras
-pip install "git+https://github.com/username/billmgr-addon.git[pymysql,celery,dev]"
-```
-
-
-## Примеры
-
-Смотрите примеры в директории `examples/`:
-
-- `basic-plugin/` - базовый плагин со списком и формой
-- `wsgi-deployment/` - развертывание через WSGI для продакшена
-- `deploy.example.toml` - пример конфигурации удаленного деплоя
-- `processing-module-example.py` - пример модуля обработки услуг
-
-
-## Разработка
-
-### Настройка окружения разработки
-
-```bash
-git clone https://github.com/billmanager/billmgr-addon.git
-cd billmgr-addon
-python -m venv venv
-source venv/bin/activate
-pip install -e .[dev]
-```
-
-### Запуск тестов
-
-```bash
-pytest
-```
-
-### Линтинг
-
-```bash
-ruff check .
-mypy .
+pip install "git+ssh://git@github.com/path/billmgr-addon.git#egg=billmgr-addon[pymysql,celery,dev]"
 ```

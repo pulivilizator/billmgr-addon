@@ -42,10 +42,10 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
     """Установить плагин в BILLmanager"""
     try:
         click.echo(f"Установка плагина {plugin_name}...")
-        
+
         if not server_app_folder and not Path("cgi.py").exists():
             raise click.ClickException("Команда должна выполняться из корня проекта плагина")
-        
+
         if not server_app_folder:
             if xml_path:
                 click.echo(f"Сборка XML конфигурации из {xml_path}...")
@@ -64,10 +64,10 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
 
         click.echo("Создание ссылок...")
         links = create_plugin_symlinks(plugin_name, server_app_folder)
-        
+
         for link_type, link_path in links.items():
             click.echo(f"  {link_type}: {link_path}")
-        
+
         if server_app_folder and update_xml_cache:
             click.echo("🔄 Обновление XML кэша...")
 
@@ -111,9 +111,9 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
                 click.echo(
                     f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
                 )
-        
+
         click.echo(f"Плагин {plugin_name} успешно установлен!")
-        
+
     except Exception as e:
         raise click.ClickException(f"Ошибка установки плагина: {e}")
 
@@ -124,20 +124,20 @@ def uninstall(plugin_name):
     """Удалить плагин"""
     try:
         click.echo(f"Удаление плагина {plugin_name}...")
-        
+
         mgr_paths = get_mgr_paths()
-        
+
         links_to_remove = [
             mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
         ]
-        
+
         for link_path in links_to_remove:
             if link_path.exists():
                 link_path.unlink()
                 click.echo(f"  Удалена ссылка: {link_path}")
-        
+
         click.echo("Перезагрузка BILLmanager...")
         reload_result = subprocess.run(
             ["systemctl", "reload", "billmgr"], capture_output=True, text=True
@@ -146,9 +146,9 @@ def uninstall(plugin_name):
             click.echo(
                 f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
             )
-        
+
         click.echo(f"Плагин {plugin_name} успешно удален!")
-        
+
     except Exception as e:
         raise click.ClickException(f"Ошибка удаления плагина: {e}")
 
@@ -159,15 +159,15 @@ def status(plugin_name):
     """Показать статус установки плагина(для вызова на сервере)"""
     try:
         mgr_paths = get_mgr_paths()
-        
+
         links_to_check = {
             "Addon handler": mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             "CGI handler": mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             "XML config": mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
         }
-        
+
         click.echo(f"Статус плагина {plugin_name}:")
-        
+
         all_exist = True
         for name, path in links_to_check.items():
             exists = path.exists()
@@ -175,12 +175,12 @@ def status(plugin_name):
             click.echo(f"  {status_icon} {name}: {path}")
             if not exists:
                 all_exist = False
-        
+
         if all_exist:
             click.echo("Плагин полностью установлен")
         else:
             click.echo("Плагин установлен не полностью")
-        
+
     except Exception as e:
         raise click.ClickException(f"Ошибка проверки статуса: {e}")
 
@@ -198,7 +198,7 @@ def build_xml(xml_path):
             click.echo(f"Сборка XML конфигурации из {xml_path}...")
         else:
             click.echo("Сборка XML конфигурации...")
-        
+
         from ..utils.xml_builder import XMLBuilder
 
         if xml_path:
@@ -214,7 +214,7 @@ def build_xml(xml_path):
         builder = XMLBuilder(src_path=src_path, build_path=build_path)
         output_path = builder.build()
         click.echo(f"XML конфигурация собрана: {output_path}")
-        
+
     except Exception as e:
         raise click.ClickException(f"Ошибка сборки XML: {e}")
 
@@ -343,7 +343,14 @@ def remote_deploy(
         for pattern in ["*.py", "*.toml"]:
             files_to_sync.extend(glob.glob(pattern))
 
-        for file_name in ["requirements.txt", "README.md", "cgi.py", "settings.py", "build_xml.py", "cli.py"]:
+        for file_name in [
+            "requirements.txt",
+            "README.md",
+            "cgi.py",
+            "settings.py",
+            "build_xml.py",
+            "cli.py",
+        ]:
             if Path(file_name).exists():
                 files_to_sync.append(file_name)
 
@@ -399,71 +406,6 @@ def remote_deploy(
                 click.echo("  Зависимости установлены")
             else:
                 click.echo("  Предупреждение: ошибка установки зависимостей")
-
-        # TODO: Установка пакета billmgr_addon на сервере, Позже удалить
-        click.echo("Установка пакета billmgr_addon на сервере...")
-
-        import billmgr_addon
-
-        installed_path = Path(billmgr_addon.__file__).parent
-
-        pth_files = list(installed_path.parent.glob("*.pth"))
-        editable_path = None
-
-        for pth_file in pth_files:
-            try:
-                with open(pth_file, "r") as f:
-                    content = f.read().strip()
-                    if "billmgr_addon" in content or "base-addon" in content:
-                        potential_path = Path(content)
-                        if potential_path.exists() and (potential_path / "setup.py").exists():
-                            editable_path = potential_path
-                            break
-            except:
-                continue
-
-        if editable_path:
-            local_billmgr_addon_path = editable_path
-            click.echo(f"  Найден editable пакет: {local_billmgr_addon_path}")
-        else:
-            current_dir = Path.cwd()
-            possible_paths = [
-                current_dir.parent / "base-addon",
-                current_dir.parent.parent / "base-addon",
-                Path.home() / "PycharmProjects" / "base-addon",
-                Path("/Users") / "dmitriy" / "PycharmProjects" / "base-addon",
-            ]
-
-            local_billmgr_addon_path = None
-            for path in possible_paths:
-                if path.exists() and (path / "setup.py").exists():
-                    local_billmgr_addon_path = path
-                    break
-
-            if not local_billmgr_addon_path:
-                click.echo("  Не удалось найти исходники billmgr_addon")
-                click.echo("  Используйте editable установку: pip install -e /path/to/base-addon")
-                return
-
-        click.echo(f"  Путь к исходникам: {local_billmgr_addon_path}")
-
-        install_cmd = f"""
-        rsync -rltz --exclude=*.pyc --exclude=__pycache__ --exclude=dist --exclude=build --exclude=*.egg-info \\
-            {local_billmgr_addon_path}/ {server}:{app_folder}/billmgr_addon_src/ && \\
-
-        ssh {ssh_options} {server} "cd {app_folder} && \\
-            source venv/bin/activate && \\
-            pip install -e ./billmgr_addon_src/"
-        """
-
-        if dry_run:
-            click.echo(f"  Команда: {install_cmd}")
-        else:
-            result = subprocess.run(install_cmd, shell=True)
-            if result.returncode == 0:
-                click.echo("  Пакет billmgr_addon установлен в editable режиме")
-            else:
-                click.echo("  Предупреждение: ошибка установки пакета billmgr_addon")
 
         if install:
             click.echo("Установка плагина...")

@@ -54,7 +54,6 @@ class ProjectScaffold:
             self.project_path / "app" / "services",
             self.project_path / "xml" / "src",
             self.project_path / "public",
-            self.project_path / "tests",
         ]
 
         for dir_path in dirs:
@@ -74,9 +73,8 @@ class ProjectScaffold:
 
     def _get_template_files(self) -> Dict[str, str]:
         return {
-            "setup.py": self._get_setup_py_template(),
             "README.md": self._get_readme_template(),
-            "requirements.txt": self._get_requirements_template(),
+            "requirements.txt": self._get_requirements_template(), # TODO: установка пакета с гитлаба
             "config.example.toml": self._get_config_template(),
             "deploy.example.toml": self._get_deploy_config_template(),
             ".gitignore": self._get_gitignore_template(),
@@ -93,39 +91,46 @@ class ProjectScaffold:
             # Точки входа
             "cgi.py": self._get_cgi_template(),
             "cli.py": self._get_cli_template(),
-            "wsgi.py": self._get_wsgi_template(),
             "build_xml.py": self._get_build_xml_template(),
-            # Тесты
-            "tests/__init__.py": "",
-            "tests/test_example.py": self._get_test_template(),
         }
 
-    def _get_setup_py_template(self) -> str:
-        return """#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-from setuptools import setup, find_packages
-
-setup(
-    name='${project_name}',
-    version='0.1.0',
-    description='BILLmanager plugin: ${project_name}',
-    packages=find_packages(where='app'),
-    package_dir={'': 'app'},
-    python_requires='>=3.8',
-    install_requires=[
-        'billmgr-addon>=0.1.0',
-    ],
-    entry_points={
-        'console_scripts': [
-            '${plugin_name}-cli=app.app:create_cli_app',
-        ],
-    },
-)
-"""
-
     def _get_requirements_template(self) -> str:
-        return """billmgr-addon>=0.1.0
+        return """annotated-types==0.7.0
+anyio==4.5.2
+asgiref==3.8.1
+attrs==25.3.0
+babel==2.17.0
+blinker==1.8.2
+certifi==2025.6.15
+charset-normalizer==3.4.2
+click==8.1.8
+exceptiongroup==1.3.0
+flask==3.0.3
+Flask-Login==0.6.3
+fluent-compiler==1.1
+fluent.syntax==0.19.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.10
+importlib-metadata==8.5.0
+itsdangerous==2.2.0
+jinja2==3.1.6
+MarkupSafe==2.1.5
+ordered-set==4.1.0
+pycryptodome==3.23.0
+pydantic==2.10.6
+pydantic-core==2.27.2
+PyMySQL==1.1.1
+pytz==2025.2
+requests==2.32.4
+sniffio==1.3.1
+tomlkit==0.13.3
+typing-extensions==4.13.2
+urllib3==2.2.3
+watchdog==4.0.2
+werkzeug==3.0.6
+zipp==3.20.2
 """
 
     def _get_config_template(self) -> str:
@@ -140,14 +145,12 @@ BILLMGR_API_USE_INTERFACE = ''
 # Скопируйте этот файл в deploy.toml и настройте под ваши сервера
 
 [dev]
-# Сервер для разработки
 server = "root@dev.example.com"
 app_folder = "/opt/${plugin_name}"
 public_folder = "/usr/local/mgr5/skins/userdata/${plugin_name}"
 ssh_options = "-A"
 
 [prod]
-# Продакшен сервер
 server = "deploy@production.example.com"
 app_folder = "/opt/${plugin_name}"
 public_folder = "/usr/local/mgr5/skins/userdata/${plugin_name}"
@@ -159,68 +162,6 @@ ssh_options = "-A -i ~/.ssh/production_key"
 
 BILLmanager плагин: ${project_name}
 
-## Структура проекта
-
-```
-${project_name}/
-├── app/                    # Основная логика плагина
-│   ├── endpoints/          # Обработчики запросов
-│   ├── services/           # Бизнес-логика
-│   └── app.py             # Фабрики Flask приложений
-├── xml/                    # XML конфигурация
-│   ├── src/               # Исходники XML
-│   └── build.xml          # Собранный XML (генерируется)
-├── public/                 # Статические файлы
-├── tests/                  # Тесты
-├── cgi.py                 # CGI точка входа
-├── cli.py                 # CLI точка входа
-├── wsgi.py                # WSGI точка входа
-├── config.toml            # Конфигурация (создать из config.example.toml)
-└── deploy.toml            # Конфигурация деплоя (создать из deploy.example.toml)
-```
-
-## Установка
-
-1. Создайте виртуальное окружение:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-
-2. Установите зависимости:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Скопируйте конфигурационные файлы:
-   ```bash
-   cp config.example.toml config.toml
-   cp deploy.example.toml deploy.toml
-   ```
-
-4. Установите плагин в BILLmanager:
-   ```bash
-   sudo billmgr-addon deploy install --plugin-name ${plugin_name}
-   ```
-
-## Сборка XML
-
-```bash
-billmgr-addon build-xml
-```
-
-## Удаленный деплой
-
-1. Настройте серверы в deploy.toml
-2. Выполните деплой:
-   ```bash
-   billmgr-addon deploy remote-deploy -e dev/prod --plugin-name ${plugin_name}
-   ```
-
-Доступные команды деплоя:
-- `remote-deploy` - полный деплой на удаленный сервер
-- `status` - проверка статуса установки
-- `uninstall` - удаление плагина
 """
 
     def _get_gitignore_template(self) -> str:
@@ -272,7 +213,6 @@ ${project_name} - BILLmanager плагин
 
 from .endpoints import endpoints
 
-__version__ = '0.1.0'
 __all__ = ['endpoints']
 '''
 
@@ -282,26 +222,43 @@ __all__ = ['endpoints']
 """
 Фабрики Flask приложений для ${project_name}
 """
-
+import traceback
+import billmgr_addon
 from billmgr_addon import create_app as create_app_base, create_cgi_app as create_cgi_app_base, create_cli_app as create_cli_app_base
+from billmgr_addon.utils.logging import setup_logger
 from .endpoints import endpoints
 
 
 def create_cgi_app():
-    """Создать CGI приложение для плагина"""
-    return create_cgi_app_base(endpoints)
-
-
-def create_cli_app():
-    """Создать CLI приложение для плагина"""  
-    return create_cli_app_base()
-
+    """Создать CGI приложение"""
+    
+    logger = setup_logger(
+        name=billmgr_addon.LOGGER_NAME,
+        path=None,
+        filename='app.log', 
+        debug=False, 
+        remove_default_handlers=True,
+        enable_console=False
+    )
+    
+    
+    billmgr_addon.LOGGER = logger
+    try:
+        app = create_cgi_app_base(endpoints=endpoints)
+        logger.info("CGI приложение создано успешно")
+        return app
+    except Exception as e:
+        logger.error(f"Ошибка создания CGI приложения: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
 
 def create_app():
-    """Создать основное Flask приложение для плагина"""
-    app = create_app_base()
-    # Здесь можно добавить дополнительную конфигурацию
-    return app
+    """Создать Flask приложение"""
+    return create_app_base(endpoints=endpoints)
+
+def create_cli_app():
+    """Создать CLI приложение"""
+    return create_cli_app_base()
 
 '''
 
@@ -319,22 +276,23 @@ endpoints = [
     def _get_example_endpoint_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
-from billmgr_addon import ListEndpoint, MgrList, MgrRequest
+from billmgr_addon import LOGGER, ListEndpoint, MgrList, MgrRequest
 
 
 class ExampleList(ListEndpoint):
-    """Пример списка для демонстрации"""
+    """Пример списка"""
+    auth_level = 16
     
     async def get(self, mgr_list: MgrList, mgr_request: MgrRequest):
         """Получить данные для списка"""
-        
-        # Пример данных
+        LOGGER.info("ExampleList.get() started")
         sample_data = [
             {"id": 1, "name": "Элемент 1", "status": "active"},
             {"id": 2, "name": "Элемент 2", "status": "inactive"},
         ]
-        
+                
         mgr_list.set_data_rows(sample_data)
+        LOGGER.info("ExampleList.get() completed")
         return mgr_list
 '''
 
@@ -344,19 +302,13 @@ class ExampleList(ListEndpoint):
 from typing import List, Dict, Any
 
 
-class ExampleService:
-    """Пример сервиса для бизнес-логики"""
-    
-    def get_items(self) -> List[Dict[str, Any]]:
-        """Получить список элементов"""
-        return [
+async def get_items() -> List[Dict[str, Any]]:
+    """Получить список элементов"""
+    return [
             {"id": 1, "name": "Элемент 1", "status": "active"},
             {"id": 2, "name": "Элемент 2", "status": "inactive"},
         ]
-    
-    def create_item(self, name: str) -> Dict[str, Any]:
-        """Создать новый элемент"""
-        return {"id": 3, "name": name, "status": "active"}
+
 '''
 
     def _get_main_xml_template(self) -> str:
@@ -367,7 +319,7 @@ class ExampleService:
     </handler>
 
     <mainmenu level="user">
-        <node name="${plugin_name}" after="customer">
+        <node name="${plugin_name}" image="stat" icon="m-stat" spritesvg="yes" after="customer">
             <node name="example.list" action="example.list" type="list"/>
         </node>
     </mainmenu>
@@ -387,31 +339,42 @@ class ExampleService:
         </messages>
     </lang>
 </mgrdata>
+
 """
 
     def _get_example_list_xml_template(self) -> str:
         return """<?xml version="1.0" encoding="UTF-8"?>
 <mgrdata>
     <metadata name="example.list" type="list" key="id" keyname="name" mgr="billmgr" level="user">
+        <toolbar>
+            <toolgrp name="new_group">
+                <toolbtn func="example.new" name="new" img="t-new" type="new" level="user" sprite="yes" />
+            </toolgrp>
+            <toolgrp name="new_group_sep" separator="yes"/>
+        </toolbar>
         <coldata>
             <col name="id" type="data" hidden="yes" />
             <col name="name" type="data" />
-            <col name="status" type="data" />
+            <col name="status" type="msg" />
         </coldata>
     </metadata>
 
     <lang name="ru">
         <messages name="example.list">
-            <msg name="title">Пример списка</msg>
+            <msg name="title">Примеры</msg>
             <msg name="name">Название</msg>
             <msg name="status">Статус</msg>
+            <msg name="active">Активен</msg>
+            <msg name="inactive">Неактивен</msg>
         </messages>
     </lang>
     <lang name="en">
         <messages name="example.list">
-            <msg name="title">Example List</msg>
+            <msg name="title">Examples</msg>
             <msg name="name">Name</msg>
             <msg name="status">Status</msg>
+            <msg name="active">Active</msg>
+            <msg name="inactive">Inactive</msg>
         </messages>
     </lang>
 </mgrdata>
@@ -425,20 +388,31 @@ class ExampleService:
 CGI интерфейс для ${project_name}
 """
 
+import os
 import sys
 from pathlib import Path
 
-# Добавляем текущую директорию в Python path
-sys.path.insert(0, str(Path(__file__).parent))
+project_dir = Path(__file__).parent.resolve()
 
-# Импортируем приложение из папки app
+os.chdir(project_dir)
+
+sys.path.insert(0, str(project_dir))
+
+if 'BILLMGR_ADDON_PROJECT_ROOT' not in os.environ:
+    os.environ['BILLMGR_ADDON_PROJECT_ROOT'] = str(project_dir)
+
+
 from app.app import create_cgi_app
+from billmgr_addon.cgi import run_with_cgi
+
+def main():
+    """Главная функция CGI скрипта"""
+    app = create_cgi_app()
+    run_with_cgi(app)
 
 if __name__ == '__main__':
-    app = create_cgi_app()
-    # Используем универсальный CGI обработчик
-    from billmgr_addon.cgi import run_with_cgi
-    run_with_cgi(app)
+    main()
+
 '''
 
     def _get_cli_template(self) -> str:
@@ -466,79 +440,29 @@ if __name__ == "__main__":
         main()
 '''
 
-    def _get_wsgi_template(self) -> str:
-        return '''#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-WSGI интерфейс для ${project_name}
-"""
-
-import sys
-from pathlib import Path
-
-# Добавляем текущую директорию в Python path
-sys.path.insert(0, str(Path(__file__).parent))
-
-# Импортируем приложение из папки app
-from app.app import create_app
-
-# Создаем WSGI приложение
-app = create_app()
-
-# Для запуска через Gunicorn:
-# gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
-
-# Для запуска через uWSGI:
-# uwsgi --http :8000 --wsgi-file wsgi.py --callable app --processes 4
-
-# Для разработки можно использовать встроенный сервер Flask:
-if __name__ == '__main__':
-    app.run(debug=True, port=8000)
-'''
-
     def _get_build_xml_template(self) -> str:
         return '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
-Сборщик XML конфигурации для ${project_name}
+Сборщик XML конфигурации для testaddon
 """
 
 import sys
-from pathlib import Path
 
-# Добавляем текущую директорию в Python path
-sys.path.insert(0, str(Path(__file__).parent))
+from billmgr_addon.utils.xml_builder import XMLBuilder
 
-# Используем универсальный сборщик XML
-from billmgr_addon.build_xml import main
+def main():
+    """Основная функция сборки XML"""
+    try:
+        builder = XMLBuilder()
+        output_path = builder.build()
+        print(f'XML успешно собран: {output_path}')
+    except Exception as e:
+        print(f'Ошибка сборки XML: {e}')
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
-'''
 
-    def _get_test_template(self) -> str:
-        return '''# -*- coding: utf-8 -*-
-
-import pytest
-from app.services.example import ExampleService
-
-
-def test_example_service():
-    """Тест примера сервиса"""
-    service = ExampleService()
-    items = service.get_items()
-    
-    assert len(items) == 2
-    assert items[0]['name'] == 'Элемент 1'
-
-
-def test_create_item():
-    """Тест создания элемента"""
-    service = ExampleService()
-    item = service.create_item('Новый элемент')
-    
-    assert item['name'] == 'Новый элемент'
-    assert item['status'] == 'active'
 '''

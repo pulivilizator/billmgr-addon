@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from abc import ABC, abstractmethod
 import asyncio
 import os
+from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional
 
 from flask import Flask, Response, current_app, request
@@ -10,8 +10,8 @@ from flask_login import current_user
 
 from ..utils.logging import LOGGER
 from .request_types import CgiRequest, MgrRequest
-from .response import MgrErrorResponse, MgrUnknownErrorResponse, MgrResponse
-from .ui import MgrForm, MgrList, MgrUI, MgrError
+from .response import MgrErrorResponse, MgrResponse, MgrUnknownErrorResponse
+from .ui import MgrError, MgrForm, MgrList, MgrUI
 
 
 class MgrRouter:
@@ -54,11 +54,13 @@ class MgrRouter:
             mgr_request = MgrRequest(request.environ)
             LOGGER.debug(f"request.remote_addr  {request.remote_addr}")
             if endpoint.__class__.init_user_api:
-                mgr_request.init_user_api(current_app.config.get('BILLMGR_API_URL'),
-                                        interface=current_app.config.get('BILLMGR_API_USE_INTERFACE'),
-                                        default_remote_address=request.remote_addr,
-                                        default_forwarded_secret=current_app.config.get('FORWARDED_SECRET'))
-    
+                mgr_request.init_user_api(
+                    current_app.config.get("BILLMGR_API_URL"),
+                    interface=current_app.config.get("BILLMGR_API_USE_INTERFACE"),
+                    default_remote_address=request.remote_addr,
+                    default_forwarded_secret=current_app.config.get("FORWARDED_SECRET"),
+                )
+
             LOGGER.debug(f"mgr_request.xml_input {mgr_request.xml_input}")
             LOGGER.debug(f"mgr_request.params {mgr_request.params}")
             LOGGER.debug(f"mgr_request.environ {mgr_request.environ}")
@@ -67,7 +69,9 @@ class MgrRouter:
         cgi_request = CgiRequest(request=request)
         method = request.method
         func_name = cgi_request.func
-        LOGGER.debug(f"cgi request: func - {func_name}, method - {method}, params - {repr(cgi_request)}")
+        LOGGER.debug(
+            f"cgi request: func - {func_name}, method - {method}, params - {repr(cgi_request)}"
+        )
 
         if func_name:
             endpoint = self.cgi_endpoints.get(func_name, CgiFallbackEndpoint())
@@ -94,7 +98,9 @@ class CgiEndpoint(ABC):
 
     async def handle_request(self, cgi_request: CgiRequest) -> Response:
         user = current_user
-        if (self.auth_level is None or self.auth_level == user.auth_level) and user.has_roles(self.roles_required):
+        if (self.auth_level is None or self.auth_level == user.auth_level) and user.has_roles(
+            self.roles_required
+        ):
             cgi_request.user = user
             return await self._handle_request(cgi_request)
 
@@ -120,29 +126,24 @@ class HtmlCgiEndpoint(CgiEndpoint):
         super().__init__(function_name)
         if self.html_file_path is None:
             raise NotImplementedError("html_file_path must be defined in the subclass")
-        
-        if not os.path.exists(self.html_file_path):
-            LOGGER.warning(f"HTML file specified in {self.__class__.__name__} not found at: {self.html_file_path}")
-            raise FileNotFoundError(f"HTML file not found at: {self.html_file_path}")
 
+        if not os.path.exists(self.html_file_path):
+            LOGGER.warning(
+                f"HTML file specified in {self.__class__.__name__} not found at: {self.html_file_path}"
+            )
+            raise FileNotFoundError(f"HTML file not found at: {self.html_file_path}")
 
     async def _handle_request(self, cgi_request: CgiRequest) -> Response:
         try:
-            with open(self.html_file_path, 'r', encoding='utf-8') as f:
+            with open(self.html_file_path, "r", encoding="utf-8") as f:
                 html_content = f.read()
-            billmgr_api_url = current_app.config.get('BILLMGR_API_URL')
-            billmgr_api_url_parse_result = urllib.parse.urlparse(billmgr_api_url)
-            billmgr_host = billmgr_api_url_parse_result.hostname
-            html_content = html_content.replace("{{BILLMGR_HOST}}", billmgr_host)
-            html_content = html_content.replace("{{WEBSOCKET_HOST}}", current_app.config.get('PROXY_WEBSOCKET_HOST'))
-            html_content = html_content.replace("{{WEBSOCKET_PORT}}", current_app.config.get('PROXY_WEBSOCKET_PORT'))
 
             # TODO: Можно подключить шаблонизатор(jinja2) в будущем при необходимости
-            
-            return Response(html_content, mimetype='text/html')
+
+            return Response(html_content, mimetype="text/html")
         except FileNotFoundError:
             LOGGER.error(f"HTML file not found at {self.html_file_path}")
-            return Response(f"Required HTML file not found.", status=404)
+            return Response("Required HTML file not found.", status=404)
         except Exception as e:
             LOGGER.exception(f"Error reading HTML file ({self.html_file_path}): {e}")
             return Response("Internal Server Error reading HTML file", status=500)
@@ -158,16 +159,21 @@ class MgrEndpoint(ABC):
 
     @abstractmethod
     async def get(self, mgr_request: MgrRequest):
-        return MgrErrorResponse(mgr_request.i18n.error.action_not_implemented(action_name='get', name=self.name))
+        return MgrErrorResponse(
+            mgr_request.i18n.error.action_not_implemented(action_name="get", name=self.name)
+        )
 
     async def handle_request(self, mgr_request: MgrRequest):
         response = None
-        LOGGER.debug(f"MgrEndpoint handle_request {self.__class__.auth_level} == {mgr_request.auth_level} -> {self.__class__.auth_level == mgr_request.auth_level}")
+        LOGGER.debug(
+            f"MgrEndpoint handle_request {self.__class__.auth_level} == {mgr_request.auth_level} -> {self.__class__.auth_level == mgr_request.auth_level}"
+        )
         if self.__class__.auth_level is None or self.__class__.auth_level == mgr_request.auth_level:
             response = await self._handle_request(mgr_request)
         else:
-            # TODO - translate!
-            response = MgrErrorResponse(f"У вас недостаточно прав на выполнение функции {self.name}")
+            response = MgrErrorResponse(
+                f"У вас недостаточно прав на выполнение функции {self.name}"
+            )
 
         response = str(response)
         LOGGER.debug(response)
@@ -201,9 +207,7 @@ class MgrEndpoint(ABC):
                 mgr_response = await handler(mgr_request)
 
             if not isinstance(mgr_response, (MgrUI, MgrResponse)):
-                raise TypeError(
-                    "Endpoint handler should return MgrUI or MgrResponse instance"
-                )
+                raise TypeError("Endpoint handler should return MgrUI or MgrResponse instance")
             elif isinstance(mgr_response, MgrUI):
                 mgr_response.patch_xml()
 
@@ -241,7 +245,9 @@ class ListEndpoint(MgrEndpoint):
 
     @abstractmethod
     async def get(self, mgr_list: MgrList, mgr_request: MgrRequest):
-        return MgrErrorResponse(mgr_request.i18n.error.action_not_implemented(action_name='get', name=self.name))
+        return MgrErrorResponse(
+            mgr_request.i18n.error.action_not_implemented(action_name="get", name=self.name)
+        )
 
     async def _handle_get(self, mgr_request: MgrRequest):
         mgr_list = MgrList.from_request(mgr_request)
@@ -311,19 +317,27 @@ class FormEndpoint(MgrEndpoint):
 
     @abstractmethod
     async def get(self, form: MgrForm, mgr_request: MgrRequest):
-        return MgrErrorResponse(mgr_request.i18n.error.action_not_implemented(action_name='get', name=self.name))
+        return MgrErrorResponse(
+            mgr_request.i18n.error.action_not_implemented(action_name="get", name=self.name)
+        )
 
     @abstractmethod
     async def setvalues(self, form: MgrForm, mgr_request: MgrRequest):
-        return MgrErrorResponse(mgr_request.i18n.error.action_not_implemented(action_name='setvalues', name=self.name))
+        return MgrErrorResponse(
+            mgr_request.i18n.error.action_not_implemented(action_name="setvalues", name=self.name)
+        )
 
     @abstractmethod
     async def new(self, mgr_request: MgrRequest):
-        return MgrErrorResponse(mgr_request.i18n.error.action_not_implemented(action_name='new', name=self.name))
+        return MgrErrorResponse(
+            mgr_request.i18n.error.action_not_implemented(action_name="new", name=self.name)
+        )
 
     @abstractmethod
     async def edit(self, mgr_request: MgrRequest):
-        return MgrErrorResponse(mgr_request.i18n.error.action_not_implemented(action_name='edit', name=self.name))
+        return MgrErrorResponse(
+            mgr_request.i18n.error.action_not_implemented(action_name="edit", name=self.name)
+        )
 
     @staticmethod
     def _get_action_type(mgr_request: MgrRequest):
@@ -367,7 +381,7 @@ class FormEndpoint(MgrEndpoint):
         return await self.get(form, mgr_request)
 
     async def _handle_setvalues(self, mgr_request):  # has sv_field=*****
-        form:MgrForm = MgrForm.from_request(mgr_request)
+        form: MgrForm = MgrForm.from_request(mgr_request)
         form.set_data({**mgr_request.params})
         if self.__class__.use_parent_data_from_request:
             form.parent_id = mgr_request.params.get("elid")

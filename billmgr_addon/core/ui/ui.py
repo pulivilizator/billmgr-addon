@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from xml.etree.ElementTree import Element
 
 from billmgr_addon.utils.logging import LOGGER
+
 from ..request_types import MgrRequest
 
 

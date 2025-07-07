@@ -49,7 +49,6 @@ from .auth import load_billmgr_user
 from .db import DB, DBConfig, FlaskDbExtension, get_db
 from .utils import CustomJSONEncoder, XMLBuilder, create_plugin_symlinks, jsonify
 from .utils.logging import LOGGER, LOGGER_NAME, setup_logger
-from .wsgi import WSGIAdapter, create_wsgi_app, create_wsgi_app_from_endpoints
 
 
 class _LazyModule:
@@ -97,11 +96,7 @@ MgrOkResponse = _lazy.MgrOkResponse
 MgrRedirectResponse = _lazy.MgrRedirectResponse
 
 
-__version__ = "0.1.0"
-
 __all__ = [
-    # Версия
-    "__version__",
     # Ядро
     "create_app",
     "create_cgi_app",
@@ -141,8 +136,4 @@ __all__ = [
     "setup_logger",
     "LOGGER",
     "LOGGER_NAME",
-    # WSGI
-    "create_wsgi_app",
-    "create_wsgi_app_from_endpoints",
-    "WSGIAdapter",
 ]

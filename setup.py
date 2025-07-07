@@ -22,7 +22,7 @@ setup(
         "ordered-set>=4.1.0",
         "watchdog>=4.0.2",
         "click>=8.1.7",
-        "toml>=0.10.2",
+        "toml>=0.13.3",
     ],
     extras_require={
         "pymysql": [
@@ -34,8 +34,6 @@ setup(
         "dev": [
             "mypy>=1.15.0",
             "ruff>=0.10.0",
-            "pytest>=7.4.0",
-            "pytest-asyncio>=0.23.0",
         ],
         "celery": [
             "celery>=5.4.0",

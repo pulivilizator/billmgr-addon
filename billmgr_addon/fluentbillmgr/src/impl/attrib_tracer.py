@@ -2,6 +2,7 @@
 
 from ..abc import AbstractAttribTracer
 
+
 class AttribTracer(AbstractAttribTracer):
     def __init__(self) -> None:
         self.request_line = ""

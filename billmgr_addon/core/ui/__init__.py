@@ -9,7 +9,7 @@ from .form import (
     MgrFormButtonsGroup,
     MgrFormGroup,
     MgrFormPage,
-    MgrHidden, 
+    MgrHidden,
     MgrInputField,
     MgrListData,
     MgrOutputField,
