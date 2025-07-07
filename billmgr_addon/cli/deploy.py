@@ -139,9 +139,8 @@ def uninstall(plugin_name):
                 click.echo(f"  Удалена ссылка: {link_path}")
 
         click.echo("Перезагрузка BILLmanager...")
-        reload_result = subprocess.run(
-            ["systemctl", "reload", "billmgr"], capture_output=True, text=True
-        )
+        restart_cmd = f"/usr/local/mgr5/sbin/mgrctl -m billmgr exit"
+        reload_result = subprocess.run(restart_cmd, capture_output=True, text=True)
         if reload_result.returncode != 0:
             click.echo(
                 f"Предупреждение: не удалось перезагрузить BILLmanager: {reload_result.stderr}"
