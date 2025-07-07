@@ -95,43 +95,7 @@ class ProjectScaffold:
         }
 
     def _get_requirements_template(self) -> str:
-        return """annotated-types==0.7.0
-anyio==4.5.2
-asgiref==3.8.1
-attrs==25.3.0
-babel==2.17.0
-blinker==1.8.2
-certifi==2025.6.15
-charset-normalizer==3.4.2
-click==8.1.8
-exceptiongroup==1.3.0
-flask==3.0.3
-Flask-Login==0.6.3
-fluent-compiler==1.1
-fluent.syntax==0.19.0
-h11==0.16.0
-httpcore==1.0.9
-httpx==0.28.1
-idna==3.10
-importlib-metadata==8.5.0
-itsdangerous==2.2.0
-jinja2==3.1.6
-MarkupSafe==2.1.5
-ordered-set==4.1.0
-pycryptodome==3.23.0
-pydantic==2.10.6
-pydantic-core==2.27.2
-PyMySQL==1.1.1
-pytz==2025.2
-requests==2.32.4
-sniffio==1.3.1
-tomlkit==0.13.3
-typing-extensions==4.13.2
-urllib3==2.2.3
-watchdog==4.0.2
-werkzeug==3.0.6
-zipp==3.20.2
-"""
+        return """git+https://github.com/pulivilizator/billmgr-addon.git#egg=billmgr-addon[pymysql]"""
 
     def _get_config_template(self) -> str:
         return """DEBUG = false
