@@ -10,7 +10,8 @@
 - Processing Module - модули обработки услуг
 """
 
-from .core import MgrAddonExtension, create_app, create_cgi_app, create_cli_app, create_processing_module_cli_app, get_router
+from .core import MgrAddonExtension, create_app, create_cgi_app, create_cli_app, get_router
+from .core.processing_module import create_processing_module_cli_app
 
 
 def _get_endpoint_classes():
