@@ -6,6 +6,7 @@
 - **CLI инструменты** - команды для создания проектов и установки
 - **Генератор проектов** - создание базовой структуры плагина
 - **XML сборка** - сборка XML конфигурации
+- **Processing Module** - модули обработки услуг
 
 ## Установка
 
@@ -102,14 +103,19 @@ my-plugin/
 │   ├── endpoints/          # Эндпоинты плагина
 │   │   ├── __init__.py
 │   │   └── example.py
-│   └── services/           # Бизнес-логика
-│       └── example.py
+│   ├── services/           # Бизнес-логика
+│   │   └── example.py
+│   └── processing_module/  # Processing Module
+│       ├── __init__.py
+│       └── handler.py
 ├── xml/                    # XML конфигурация
 │   └── src/
 │       ├── main.xml
-│       └── example_list.xml
+│       ├── example_list.xml
+│       └── processing_module.xml
 ├── cgi.py                  # CGI точка входа
 ├── cli.py                  # CLI точка входа
+├── processing_module_cli.py # Processing Module CLI
 ├── config.example.toml     # Пример конфигурации
 └── setup.py               # Настройки пакета
 ```
@@ -193,6 +199,88 @@ class MyCloudEndpoint(ProjectRequiredEndpoint):
     async def get(self, mgr_request):
         # mgr_request.project_id уже доступен
         return f"Project: {mgr_request.project_id}"
+```
+
+## Processing Module
+
+### Создание Processing Module
+
+1. **Создайте обработчик команд**:
+
+```python
+from billmgr_addon import ProcessingModuleHandler, ProcessingModuleResponse
+
+class MyServiceProcessingModuleHandler(ProcessingModuleHandler):
+    def get_itemtypes(self):
+        return [{"name": "myservice"}]
+    
+    def get_features(self):
+        return [
+            {"name": "features"},
+            {"name": "open"},
+            {"name": "suspend"},
+            {"name": "resume"},
+            {"name": "close"},
+            {"name": "stat"},
+        ]
+    
+    def get_params(self):
+        return [
+            {"name": "api_url"},
+            {"name": "api_token", "crypted": "yes"},
+        ]
+    
+    def open_command(self, item_id=None, **kwargs):
+        # Логика активации услуги
+        return ProcessingModuleResponse("ok")
+```
+
+2. **Создайте Blueprint и CLI приложение**:
+
+```python
+from billmgr_addon import create_processing_module_blueprint, create_processing_module_cli_app
+
+handler = MyServiceProcessingModuleHandler()
+blueprint = create_processing_module_blueprint(handler)
+
+def create_processing_module_cli_app():
+    return create_processing_module_cli_app(blueprint)
+```
+
+3. **Создайте CLI точку входа** (`processing_module_cli.py`):
+
+```python
+#!/usr/bin/env python
+from app import create_processing_module_cli_app
+
+if __name__ == "__main__":
+    app = create_processing_module_cli_app()
+    with app.app_context():
+        app.cli.commands['execute']()
+```
+
+4. **Создайте XML конфигурацию** (`xml/src/processing_module.xml`):
+
+```xml
+<?xml version='1.0' encoding="UTF-8"?>
+<mgrdata>
+    <plugin name="pmmyservice">
+        <group>processing_module</group>
+        <params>
+            <type name="myservice"/>
+        </params>
+    </plugin>
+    
+    <metadata name="processing.edit.pmmyservice" type="form">
+        <form title="name">
+            <page name="connect">
+                <field name="api_url">
+                    <input type="text" name="api_url" required="yes"/>
+                </field>
+            </page>
+        </form>
+    </metadata>
+</mgrdata>
 ```
 
 

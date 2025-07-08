@@ -34,11 +34,13 @@ xml_path = cwd_path.joinpath("xml")
 cgi_app_path = cwd_path.joinpath("cgi.py")
 cli_app_path = cwd_path.joinpath("cli.py")
 xml_build_path = xml_path.joinpath("build.xml")
+processing_module_cli_path = cwd_path.joinpath("processing_module_cli.py")
 
 mgr_path = Path("/usr/local/mgr5")
 mgr_plugin_handlers_path = mgr_path.joinpath("addon")
 mgr_cgi_handlers_path = mgr_path.joinpath("cgi")
 mgr_xml_path = mgr_path.joinpath("etc/xml")
+mgr_processing_path = mgr_path.joinpath("processing")
 
 
 def _create_executable_file(path: Union[Path, str], text: str) -> None:
@@ -128,18 +130,88 @@ def create_plugin_xml_symlink(
     return link_path
 
 
-def create_plugin_symlinks(
+def _create_processing_module_script(
+    link_path: Union[Path, str], server_app_folder: Optional[Union[Path, str]] = None
+) -> None:
+    """
+    Создать bash-скрипт для processing module
+
+    Args:
+        link_path: Путь к создаваемому скрипту
+        server_app_folder: Путь к папке приложения на сервере
+    """
+    if server_app_folder:
+        server_app_folder = Path(server_app_folder)
+        actual_interpreter = server_app_folder / "venv/bin/python3"
+        actual_processing_cli = server_app_folder / "processing_module_cli.py"
+    else:
+        actual_interpreter = interpreter_path
+        actual_processing_cli = processing_module_cli_path
+
+    file_content = f"""#!/bin/bash
+export PYTHONIOENCODING=utf-8
+export LANG=ru_RU.UTF-8
+{actual_interpreter} {actual_processing_cli} "$@"
+"""
+    _create_executable_file(link_path, file_content)
+
+
+def create_plugin_processing_module_script(
     plugin_name: str, server_app_folder: Optional[Union[Path, str]] = None
+) -> Path:
+    """
+    Создать processing module script для плагина
+
+    Args:
+        plugin_name: Имя плагина
+        server_app_folder: Путь к папке приложения на сервере
+
+    Returns:
+        Путь к созданному скрипту
+    """
+    link_path = mgr_processing_path.joinpath(f"pm{plugin_name}")
+    _create_processing_module_script(link_path, server_app_folder)
+    return link_path
+
+
+def create_plugin_symlinks(
+    plugin_name: str, 
+    server_app_folder: Optional[Union[Path, str]] = None,
+    install_processing_module: bool = False
 ) -> dict:
+    """
+    Создать все ссылки для плагина
+
+    Args:
+        plugin_name: Имя плагина
+        server_app_folder: Путь к папке приложения на сервере
+        install_processing_module: Устанавливать ли processing module script
+
+    Returns:
+        Словарь с путями к созданным ссылкам
+    """
     server_xml_build_path = None
     if server_app_folder:
         server_xml_build_path = Path(server_app_folder) / "xml/build.xml"
 
-    return {
+    links = {
         "addon_link": create_plugin_app_link(plugin_name, server_app_folder),
         "cgi_link": create_cgi_app_link(plugin_name, server_app_folder),
         "xml_link": create_plugin_xml_symlink(plugin_name, server_xml_build_path),
     }
+
+    if install_processing_module:
+        # Проверяем существование processing_module_cli.py
+        processing_cli_exists = False
+        if server_app_folder:
+            processing_cli_exists = (Path(server_app_folder) / "processing_module_cli.py").exists()
+        else:
+            processing_cli_exists = processing_module_cli_path.exists()
+
+        if processing_cli_exists:
+            links["processing_module_script"] = create_plugin_processing_module_script(plugin_name, server_app_folder)
+
+    return links
 
 
 def get_standard_paths(project_root: Union[Path, str, None] = None) -> dict:
@@ -157,6 +229,7 @@ def get_standard_paths(project_root: Union[Path, str, None] = None) -> dict:
         "cgi_app_path": project_root / "cgi.py",
         "cli_app_path": project_root / "cli.py",
         "xml_build_path": project_root / "xml/build.xml",
+        "processing_module_cli_path": project_root / "processing_module_cli.py",
     }
 
 
@@ -166,4 +239,5 @@ def get_mgr_paths() -> dict:
         "mgr_plugin_handlers_path": mgr_plugin_handlers_path,
         "mgr_cgi_handlers_path": mgr_cgi_handlers_path,
         "mgr_xml_path": mgr_xml_path,
+        "mgr_processing_path": mgr_processing_path,
     }

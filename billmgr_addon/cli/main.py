@@ -69,7 +69,12 @@ def create_project(name: str, path: str, template: str):
 
 @main.command()
 @click.option("--plugin-name", required=True, help="Имя плагина")
-def install(plugin_name: str):
+@click.option(
+    "--install-processing-module/--no-install-processing-module",
+    default=True,
+    help="Устанавливать ли processing module script (по умолчанию да, если processing_module_cli.py существует)",
+)
+def install(plugin_name: str, install_processing_module: bool):
     """Установить плагин в BILLmanager"""
     click.echo(f"Установка плагина '{plugin_name}' в BILLmanager...")
 
@@ -81,7 +86,7 @@ def install(plugin_name: str):
         if not os.access(mgr_path, os.W_OK):
             raise click.ClickException("Недостаточно прав для установки. Запустите с sudo.")
 
-        links = create_plugin_symlinks(plugin_name)
+        links = create_plugin_symlinks(plugin_name, install_processing_module=install_processing_module)
 
         click.echo("Ссылки созданы:")
         for link_type, link_path in links.items():

@@ -7,9 +7,10 @@
 - Авторизация (auth) - интеграция с сессиями BILLmanager
 - CLI инструменты (cli) - команды для создания и установки плагинов
 - Утилиты (utils) - вспомогательные функции
+- Processing Module - модули обработки услуг
 """
 
-from .core import MgrAddonExtension, create_app, create_cgi_app, create_cli_app, get_router
+from .core import MgrAddonExtension, create_app, create_cgi_app, create_cli_app, create_processing_module_cli_app, get_router
 
 
 def _get_endpoint_classes():
@@ -44,11 +45,38 @@ def _get_request_response_classes():
     }
 
 
+def _get_processing_module_classes():
+    from .core.processing_module import (
+        ProcessingModuleHandler,
+        ProcessingModuleResponse,
+        FeaturesResponse,
+        create_processing_module_blueprint,
+        get_service_status,
+        set_service_status_active,
+        set_service_status_suspended,
+        set_service_status_resumed,
+        set_service_status_closed,
+    )
+
+    return {
+        "ProcessingModuleHandler": ProcessingModuleHandler,
+        "ProcessingModuleResponse": ProcessingModuleResponse,
+        "FeaturesResponse": FeaturesResponse,
+        "create_processing_module_blueprint": create_processing_module_blueprint,
+        "get_service_status": get_service_status,
+        "set_service_status_active": set_service_status_active,
+        "set_service_status_suspended": set_service_status_suspended,
+        "set_service_status_resumed": set_service_status_resumed,
+        "set_service_status_closed": set_service_status_closed,
+    }
+
+
 from . import build_xml, cgi, cli
 from .auth import load_billmgr_user
 from .db import DB, DBConfig, FlaskDbExtension, get_db
 from .utils import CustomJSONEncoder, XMLBuilder, create_plugin_symlinks, jsonify
 from .utils.logging import LOGGER, LOGGER_NAME, setup_logger
+from .utils.mgrctl import mgrctl_exec
 
 
 class _LazyModule:
@@ -56,6 +84,7 @@ class _LazyModule:
         self._endpoint_classes = None
         self._ui_classes = None
         self._request_response_classes = None
+        self._processing_module_classes = None
 
     def __getattr__(self, name):
         if self._endpoint_classes is None:
@@ -72,6 +101,11 @@ class _LazyModule:
             self._request_response_classes = _get_request_response_classes()
         if name in self._request_response_classes:
             return self._request_response_classes[name]
+
+        if self._processing_module_classes is None:
+            self._processing_module_classes = _get_processing_module_classes()
+        if name in self._processing_module_classes:
+            return self._processing_module_classes[name]
 
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
@@ -95,12 +129,24 @@ MgrErrorResponse = _lazy.MgrErrorResponse
 MgrOkResponse = _lazy.MgrOkResponse
 MgrRedirectResponse = _lazy.MgrRedirectResponse
 
+# Processing Module classes
+ProcessingModuleHandler = _lazy.ProcessingModuleHandler
+ProcessingModuleResponse = _lazy.ProcessingModuleResponse
+FeaturesResponse = _lazy.FeaturesResponse
+create_processing_module_blueprint = _lazy.create_processing_module_blueprint
+get_service_status = _lazy.get_service_status
+set_service_status_active = _lazy.set_service_status_active
+set_service_status_suspended = _lazy.set_service_status_suspended
+set_service_status_resumed = _lazy.set_service_status_resumed
+set_service_status_closed = _lazy.set_service_status_closed
+
 
 __all__ = [
     # Ядро
     "create_app",
     "create_cgi_app",
     "create_cli_app",
+    "create_processing_module_cli_app",
     "MgrAddonExtension",
     "get_router",
     # Эндпоинты
@@ -120,6 +166,16 @@ __all__ = [
     "MgrErrorResponse",
     "MgrOkResponse",
     "MgrRedirectResponse",
+    # Processing Module
+    "ProcessingModuleHandler",
+    "ProcessingModuleResponse",
+    "FeaturesResponse",
+    "create_processing_module_blueprint",
+    "get_service_status",
+    "set_service_status_active",
+    "set_service_status_suspended",
+    "set_service_status_resumed",
+    "set_service_status_closed",
     # БД
     "get_db",
     "DB",
@@ -132,6 +188,7 @@ __all__ = [
     "XMLBuilder",
     "CustomJSONEncoder",
     "jsonify",
+    "mgrctl_exec",
     # Логгирование
     "setup_logger",
     "LOGGER",

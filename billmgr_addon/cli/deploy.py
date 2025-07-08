@@ -38,7 +38,12 @@ def deploy():
     default=True,
     help="Обновить XML кэш после установки",
 )
-def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
+@click.option(
+    "--install-processing-module/--no-install-processing-module",
+    default=True,
+    help="Устанавливать ли processing module script (по умолчанию да, если processing_module_cli.py существует)",
+)
+def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache, install_processing_module):
     """Установить плагин в BILLmanager"""
     try:
         click.echo(f"Установка плагина {plugin_name}...")
@@ -63,7 +68,7 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache):
             builder.build()
 
         click.echo("Создание ссылок...")
-        links = create_plugin_symlinks(plugin_name, server_app_folder)
+        links = create_plugin_symlinks(plugin_name, server_app_folder, install_processing_module)
 
         for link_type, link_path in links.items():
             click.echo(f"  {link_type}: {link_path}")
@@ -131,6 +136,7 @@ def uninstall(plugin_name):
             mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
+            mgr_paths["mgr_processing_path"] / f"pm{plugin_name}",  # Processing module script
         ]
 
         for link_path in links_to_remove:
@@ -163,6 +169,7 @@ def status(plugin_name):
             "Addon handler": mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             "CGI handler": mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             "XML config": mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
+            "Processing module": mgr_paths["mgr_processing_path"] / f"pm{plugin_name}",
         }
 
         click.echo(f"Статус плагина {plugin_name}:")
@@ -235,8 +242,13 @@ def build_xml(xml_path):
     type=click.Path(exists=True, file_okay=False, path_type=Path),
     help="Путь к папке xml (по умолчанию ./xml)",
 )
+@click.option(
+    "--install-processing-module/--no-install-processing-module",
+    default=True,
+    help="Устанавливать ли processing module script (по умолчанию да, если processing_module_cli.py существует)",
+)
 def remote_deploy(
-    environment, plugin_name, config, backup, install, restart_billmgr, dry_run, xml_path
+    environment, plugin_name, config, backup, install, restart_billmgr, dry_run, xml_path, install_processing_module
 ):
     """Деплой плагина на удаленный сервер"""
     try:
@@ -349,6 +361,7 @@ def remote_deploy(
             "settings.py",
             "build_xml.py",
             "cli.py",
+            "processing_module_cli.py",
         ]:
             if Path(file_name).exists():
                 files_to_sync.append(file_name)
@@ -408,9 +421,13 @@ def remote_deploy(
 
         if install:
             click.echo("Установка плагина...")
+            
+            # Добавляем флаг processing module если он включен
+            processing_module_flag = "--install-processing-module" if install_processing_module else "--no-install-processing-module"
+            
             install_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
                 source venv/bin/activate && \\
-                billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder}" """
+                billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder} {processing_module_flag}" """
 
             if dry_run:
                 click.echo(f"  Команда: {install_cmd}")
@@ -440,8 +457,9 @@ def remote_deploy(
 
         if not install:
             click.echo("Для установки плагина выполните:")
+            processing_module_flag = "--install-processing-module" if install_processing_module else "--no-install-processing-module"
             click.echo(
-                f"   ssh {server} 'cd {app_folder} && source venv/bin/activate && sudo billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder}'"
+                f"   ssh {server} 'cd {app_folder} && source venv/bin/activate && sudo billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder} {processing_module_flag}'"
             )
 
         if not restart_billmgr:

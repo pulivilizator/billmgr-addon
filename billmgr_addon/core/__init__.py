@@ -8,6 +8,7 @@
 - UI компоненты (MgrForm, MgrList, MgrError)
 - Типы запросов и ответов
 - Базовые классы эндпоинтов
+- Processing Module поддержка
 """
 
 from types import SimpleNamespace
@@ -175,4 +176,26 @@ def create_cli_app():
     return app
 
 
-__all__ = ["MgrAddonExtension", "get_router", "create_app", "create_cgi_app", "create_cli_app"]
+def create_processing_module_cli_app(processing_module_blueprint):
+    """
+    Создать CLI приложение для processing module
+    
+    Args:
+        processing_module_blueprint: Blueprint с командами processing module
+    
+    Returns:
+        Flask: Настроенное CLI приложение для processing module
+    """
+    app = create_common_app()
+    app.register_blueprint(processing_module_blueprint, cli_group=None)
+    return app
+
+
+__all__ = [
+    "MgrAddonExtension", 
+    "get_router", 
+    "create_app", 
+    "create_cgi_app", 
+    "create_cli_app",
+    "create_processing_module_cli_app"
+]

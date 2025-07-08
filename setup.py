@@ -23,6 +23,7 @@ setup(
         "watchdog>=4.0.2",
         "click>=8.1.7",
         "toml>=0.10.2",
+        "cryptography==45.0.5",
     ],
     extras_require={
         "pymysql": [

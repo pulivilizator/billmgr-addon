@@ -52,6 +52,7 @@ class ProjectScaffold:
             self.project_path / "app",
             self.project_path / "app" / "endpoints",
             self.project_path / "app" / "services",
+            self.project_path / "app" / "processing_module",
             self.project_path / "xml" / "src",
             self.project_path / "public",
         ]
@@ -73,8 +74,7 @@ class ProjectScaffold:
 
     def _get_template_files(self) -> Dict[str, str]:
         return {
-            "README.md": self._get_readme_template(),
-            "requirements.txt": self._get_requirements_template(), # TODO: установка пакета с гитлаба
+            "requirements.txt": self._get_requirements_template(),
             "config.example.toml": self._get_config_template(),
             "deploy.example.toml": self._get_deploy_config_template(),
             ".gitignore": self._get_gitignore_template(),
@@ -85,9 +85,14 @@ class ProjectScaffold:
             "app/endpoints/example.py": self._get_example_endpoint_template(),
             "app/services/__init__.py": "",
             "app/services/example.py": self._get_example_service_template(),
+            # Processing Module
+            "app/processing_module/__init__.py": "",
+            "app/processing_module/handler.py": self._get_processing_module_handler_template(),
+            "processing_module_cli.py": self._get_processing_module_cli_template(),
             # XML файлы
             "xml/src/main.xml": self._get_main_xml_template(),
             "xml/src/example_list.xml": self._get_example_list_xml_template(),
+            "xml/src/processing_module.xml": self._get_processing_module_xml_template(),
             # Точки входа
             "cgi.py": self._get_cgi_template(),
             "cli.py": self._get_cli_template(),
@@ -119,13 +124,6 @@ server = "deploy@production.example.com"
 app_folder = "/opt/${plugin_name}"
 public_folder = "/usr/local/mgr5/skins/userdata/${plugin_name}"
 ssh_options = "-A -i ~/.ssh/production_key"
-"""
-
-    def _get_readme_template(self) -> str:
-        return """# ${project_name}
-
-BILLmanager плагин: ${project_name}
-
 """
 
     def _get_gitignore_template(self) -> str:
@@ -405,28 +403,261 @@ if __name__ == "__main__":
 '''
 
     def _get_build_xml_template(self) -> str:
-        return '''#!/usr/bin/env python3
+        return '''#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import billmgr_addon
+
+if __name__ == "__main__":
+    billmgr_addon.build_xml.main()
+'''
+
+    def _get_processing_module_handler_template(self) -> str:
+        return '''# -*- coding: utf-8 -*-
+
+"""
+Processing Module Handler для ${project_name}
+
+Этот модуль обрабатывает события услуг:
+- open: активация услуги
+- suspend: приостановка услуги
+- resume: возобновление услуги
+- close: закрытие услуги
+- stat: сбор статистики
+"""
+
+from typing import Dict, List, Optional
+from billmgr_addon import (
+    ProcessingModuleHandler, 
+    ProcessingModuleResponse, 
+    create_processing_module_blueprint,
+    get_service_status,
+    set_service_status_active,
+    set_service_status_suspended,
+    set_service_status_resumed,
+    set_service_status_closed,
+    get_db,
+    mgrctl_exec,
+    LOGGER
+)
+
+
+class ${class_name}ProcessingModuleHandler(ProcessingModuleHandler):
+    """Обработчик processing module для ${project_name}"""
+    
+    def get_itemtypes(self) -> List[Dict[str, str]]:
+        """Типы услуг которые обрабатывает модуль"""
+        return [
+            {"name": "${plugin_name}_service"}  # Замените на ваш тип услуги
+        ]
+    
+    def get_features(self) -> List[Dict[str, str]]:
+        """Поддерживаемые команды"""
+        return [
+            {"name": "features"},
+            {"name": "open"},
+            {"name": "resume"},
+            {"name": "suspend"},
+            {"name": "close"},
+            {"name": "stat"},
+            # {"name": "start"},  # Раскомментируйте если нужны
+            # {"name": "stop"},   # Раскомментируйте если нужны
+        ]
+    
+    def get_params(self) -> List[Dict[str, str]]:
+        """Параметры конфигурации модуля"""
+        return [
+            {"name": "api_url"},
+            {"name": "api_token", "crypted": "yes"},
+            # Добавьте другие параметры по необходимости
+        ]
+    
+    def open_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка активации услуги"""
+        LOGGER.info(f"Processing open command for item {item_id}")
+        
+        try:
+            service = get_service_status(item_id)
+            if not service:
+                LOGGER.error(f"Service {item_id} not found")
+                return ProcessingModuleResponse("error: service not found")
+            
+            # TODO: Ваша логика активации услуги
+            
+            cmd = [f"{self.get_itemtypes()[0]['name']}.edit", f"elid={item_id}", "service_id=generated_id", "sok=ok"]
+            mgrctl_exec(cmd)
+            
+            set_service_status_active(item_id)
+            
+            LOGGER.info(f"Service {item_id} opened successfully")
+            return ProcessingModuleResponse("ok")
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to open service {item_id}: {e}")
+            return ProcessingModuleResponse(f"error: {str(e)}")
+    
+    def suspend_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка приостановки услуги"""
+        LOGGER.info(f"Processing suspend command for item {item_id}")
+        
+        try:
+            service = get_service_status(item_id)
+            if not service:
+                LOGGER.error(f"Service {item_id} not found")
+                return ProcessingModuleResponse("error: service not found")
+            
+            # TODO: Ваша логика приостановки услуги
+            
+            set_service_status_suspended(item_id)
+            
+            LOGGER.info(f"Service {item_id} suspended successfully")
+            return ProcessingModuleResponse("ok")
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to suspend service {item_id}: {e}")
+            return ProcessingModuleResponse(f"error: {str(e)}")
+    
+    def resume_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка возобновления услуги"""
+        LOGGER.info(f"Processing resume command for item {item_id}")
+        
+        try:
+            service = get_service_status(item_id)
+            if not service:
+                LOGGER.error(f"Service {item_id} not found")
+                return ProcessingModuleResponse("error: service not found")
+            
+            # TODO: Ваша логика возобновления услуги
+            
+            set_service_status_resumed(item_id)
+            
+            LOGGER.info(f"Service {item_id} resumed successfully")
+            return ProcessingModuleResponse("ok")
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to resume service {item_id}: {e}")
+            return ProcessingModuleResponse(f"error: {str(e)}")
+    
+    def close_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка закрытия услуги"""
+        LOGGER.info(f"Processing close command for item {item_id}")
+        
+        try:
+            service = get_service_status(item_id)
+            if not service:
+                LOGGER.error(f"Service {item_id} not found")
+                return ProcessingModuleResponse("error: service not found")
+            
+            # TODO: Ваша логика закрытия услуги
+            
+            set_service_status_closed(item_id)
+            
+            LOGGER.info(f"Service {item_id} closed successfully")
+            return ProcessingModuleResponse("ok")
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to close service {item_id}: {e}")
+            return ProcessingModuleResponse(f"error: {str(e)}")
+    
+    def stat_command(self, module_id: Optional[int] = None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка сбора статистики"""
+        LOGGER.info(f"Processing stat command for module {module_id}")
+        
+        try:
+            # TODO: Ваша логика сбора статистики
+            
+            db = get_db('billmgr')
+            services = db.select_query("""
+                SELECT i.id, i.status
+                FROM item i
+                JOIN pricelist pl ON pl.id = i.pricelist  
+                WHERE pl.type = %s AND i.status IN (2, 3)
+            """, (self.get_itemtypes()[0]['name'],)).all()
+            
+            LOGGER.info(f"Found {len(services)} active services for statistics")
+            
+            for service in services:
+                # TODO: Обновить статистику для услуги
+                pass
+            
+            LOGGER.info(f"Statistics collection completed for module {module_id}")
+            return ProcessingModuleResponse("ok")
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to collect statistics for module {module_id}: {e}")
+            return ProcessingModuleResponse(f"error: {str(e)}")
+
+
+# Создать экземпляр обработчика и blueprint
+processing_module_handler = ${class_name}ProcessingModuleHandler()
+processing_module_blueprint = create_processing_module_blueprint(processing_module_handler)
+'''
+
+    def _get_processing_module_cli_template(self) -> str:
+        return '''#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
-Сборщик XML конфигурации для testaddon
+CLI точка входа для Processing Module
+Этот файл вызывается BILLmanager при обработке событий услуг
 """
 
-import sys
+from app import create_processing_module_cli_app
 
-from billmgr_addon.utils.xml_builder import XMLBuilder
+if __name__ == "__main__":
+    app = create_processing_module_cli_app()
+    with app.app_context():
+        app.cli.commands['execute']()
+'''
 
-def main():
-    """Основная функция сборки XML"""
-    try:
-        builder = XMLBuilder()
-        output_path = builder.build()
-        print(f'XML успешно собран: {output_path}')
-    except Exception as e:
-        print(f'Ошибка сборки XML: {e}')
-        sys.exit(1)
-
-if __name__ == '__main__':
-    main()
-
+    def _get_processing_module_xml_template(self) -> str:
+        return '''<?xml version='1.0' encoding="UTF-8"?>
+<mgrdata>
+    <plugin name="pm${plugin_name}">
+        <group>processing_module</group>
+        <author>${project_name} Team</author>
+        <params>
+            <type name="${plugin_name}_service"/>
+        </params>
+        <msg name="desc_short" lang="ru">${project_name}</msg>
+        <msg name="desc_short" lang="en">${project_name}</msg>
+        <msg name="desc_full" lang="ru">Модуль обработки для ${project_name}</msg>
+        <msg name="desc_full" lang="en">Processing module for ${project_name}</msg>
+    </plugin>
+    
+    <metadata name="processing.edit.pm${plugin_name}" type="form">
+        <form title="name">
+            <page name="connect">
+                <field name="api_url">
+                    <input type="text" name="api_url" check="url" required="yes" maxlength="256"/>
+                </field>
+                <field name="api_token">
+                    <input type="text" name="api_token" required="yes" maxlength="256"/>
+                </field>
+            </page>
+        </form>
+    </metadata>
+    
+    <lang name="ru">
+        <messages name="processing.edit.pm${plugin_name}">
+            <msg name="api_url">URL API</msg>
+            <msg name="api_token">Токен API</msg>
+        </messages>
+        <messages name="label_processing_modules">
+            <msg name="pm${plugin_name}">${project_name}</msg>
+            <msg name="module_pm${plugin_name}">${project_name}</msg>
+        </messages>
+    </lang>
+    
+    <lang name="en">
+        <messages name="processing.edit.pm${plugin_name}">
+            <msg name="api_url">API URL</msg>
+            <msg name="api_token">API Token</msg>
+        </messages>
+        <messages name="label_processing_modules">
+            <msg name="pm${plugin_name}">${project_name}</msg>
+            <msg name="module_pm${plugin_name}">${project_name}</msg>
+        </messages>
+    </lang>
+</mgrdata>
 '''
