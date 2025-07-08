@@ -186,9 +186,17 @@ __all__ = ['endpoints']
 """
 import traceback
 import billmgr_addon
-from billmgr_addon import create_app as create_app_base, create_cgi_app as create_cgi_app_base, create_cli_app as create_cli_app_base
+from billmgr_addon import (
+    create_app as create_app_base, 
+    create_cgi_app as create_cgi_app_base, 
+    create_cli_app as create_cli_app_base,
+    create_processing_module_cli_app,
+    create_processing_module_blueprint,
+    LOGGER
+)
 from billmgr_addon.utils.logging import setup_logger
 from .endpoints import endpoints
+from .processing_module.handler import ${class_name}ProcessingModuleHandler
 
 
 def create_cgi_app():
@@ -221,6 +229,36 @@ def create_app():
 def create_cli_app():
     """Создать CLI приложение"""
     return create_cli_app_base()
+
+def create_processing_module_cli_app():
+    """Создать CLI приложение для processing module"""
+    
+    # Настройка логгирования для processing module
+    logger = setup_logger(
+        name=billmgr_addon.LOGGER_NAME,
+        path=None,
+        filename='app.log', 
+        debug=False, 
+        remove_default_handlers=True,
+        enable_console=True  # Для CLI включаем консольный вывод
+    )
+    
+    billmgr_addon.LOGGER = logger
+    
+    try:
+        # Создание обработчика и blueprint
+        handler = ${class_name}ProcessingModuleHandler()
+        blueprint = create_processing_module_blueprint(handler)
+        
+        # Создание CLI приложения с blueprint
+        app = create_processing_module_cli_app(blueprint)
+        
+        LOGGER.info("Processing module CLI приложение создано успешно")
+        return app
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания processing module CLI приложения: {e}")
+        LOGGER.error(f"Traceback: {traceback.format_exc()}")
+        raise
 
 '''
 
@@ -287,6 +325,7 @@ async def get_items() -> List[Dict[str, Any]]:
     </mainmenu>
 
     <import path="example_list.xml"/>
+    <import path="processing_module.xml"/>
 
     <lang name="ru">
         <messages name="desktop">
@@ -417,180 +456,111 @@ if __name__ == "__main__":
 
 """
 Processing Module Handler для ${project_name}
-
-Этот модуль обрабатывает события услуг:
-- open: активация услуги
-- suspend: приостановка услуги
-- resume: возобновление услуги
-- close: закрытие услуги
-- stat: сбор статистики
 """
 
-from typing import Dict, List, Optional
-from billmgr_addon import (
-    ProcessingModuleHandler, 
-    ProcessingModuleResponse, 
-    create_processing_module_blueprint,
-    get_service_status,
-    set_service_status_active,
-    set_service_status_suspended,
-    set_service_status_resumed,
-    set_service_status_closed,
-    get_db,
-    mgrctl_exec,
-    LOGGER
-)
+from typing import Dict, List
+
+from billmgr_addon import ProcessingModuleHandler, ProcessingModuleResponse, LOGGER
 
 
 class ${class_name}ProcessingModuleHandler(ProcessingModuleHandler):
-    """Обработчик processing module для ${project_name}"""
-    
+    """
+    Обработчик processing module для ${project_name}
+    """
+
     def get_itemtypes(self) -> List[Dict[str, str]]:
         """Типы услуг которые обрабатывает модуль"""
-        return [
-            {"name": "${plugin_name}_service"}  # Замените на ваш тип услуги
-        ]
-    
+        return [{"name": "${plugin_name}_service"}]
+
     def get_features(self) -> List[Dict[str, str]]:
         """Поддерживаемые команды"""
         return [
             {"name": "features"},
             {"name": "open"},
-            {"name": "resume"},
             {"name": "suspend"},
+            {"name": "resume"},
             {"name": "close"},
             {"name": "stat"},
-            # {"name": "start"},  # Раскомментируйте если нужны
-            # {"name": "stop"},   # Раскомментируйте если нужны
         ]
-    
+
     def get_params(self) -> List[Dict[str, str]]:
-        """Параметры конфигурации модуля"""
+        """Параметры конфигурации"""
         return [
             {"name": "api_url"},
             {"name": "api_token", "crypted": "yes"},
-            # Добавьте другие параметры по необходимости
         ]
-    
-    def open_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
-        """Обработка активации услуги"""
-        LOGGER.info(f"Processing open command for item {item_id}")
+
+    def open_command(self, item_id=None, runningoperation=None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка команды open - активация услуги"""
+        LOGGER.info(f"Opening service {item_id} for project ${project_name}")
         
         try:
-            service = get_service_status(item_id)
-            if not service:
-                LOGGER.error(f"Service {item_id} not found")
-                return ProcessingModuleResponse("error: service not found")
-            
-            # TODO: Ваша логика активации услуги
-            
-            cmd = [f"{self.get_itemtypes()[0]['name']}.edit", f"elid={item_id}", "service_id=generated_id", "sok=ok"]
-            mgrctl_exec(cmd)
-            
-            set_service_status_active(item_id)
+            # Здесь разместите логику активации услуги
+            # Например, вызов API для создания ресурса
             
             LOGGER.info(f"Service {item_id} opened successfully")
             return ProcessingModuleResponse("ok")
             
         except Exception as e:
-            LOGGER.error(f"Failed to open service {item_id}: {e}")
-            return ProcessingModuleResponse(f"error: {str(e)}")
-    
-    def suspend_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
-        """Обработка приостановки услуги"""
-        LOGGER.info(f"Processing suspend command for item {item_id}")
+            LOGGER.exception(f"Error opening service {item_id}: {e}")
+            return ProcessingModuleResponse("error")
+
+    def suspend_command(self, item_id=None, runningoperation=None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка команды suspend - приостановка услуги"""
+        LOGGER.info(f"Suspending service {item_id} for project ${project_name}")
         
         try:
-            service = get_service_status(item_id)
-            if not service:
-                LOGGER.error(f"Service {item_id} not found")
-                return ProcessingModuleResponse("error: service not found")
-            
-            # TODO: Ваша логика приостановки услуги
-            
-            set_service_status_suspended(item_id)
+            # Здесь разместите логику приостановки услуги
+            # Например, вызов API для остановки ресурса
             
             LOGGER.info(f"Service {item_id} suspended successfully")
             return ProcessingModuleResponse("ok")
             
         except Exception as e:
-            LOGGER.error(f"Failed to suspend service {item_id}: {e}")
-            return ProcessingModuleResponse(f"error: {str(e)}")
-    
-    def resume_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
-        """Обработка возобновления услуги"""
-        LOGGER.info(f"Processing resume command for item {item_id}")
+            LOGGER.exception(f"Error suspending service {item_id}: {e}")
+            return ProcessingModuleResponse("error")
+
+    def resume_command(self, item_id=None, runningoperation=None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка команды resume - возобновление услуги"""
+        LOGGER.info(f"Resuming service {item_id} for project ${project_name}")
         
         try:
-            service = get_service_status(item_id)
-            if not service:
-                LOGGER.error(f"Service {item_id} not found")
-                return ProcessingModuleResponse("error: service not found")
-            
-            # TODO: Ваша логика возобновления услуги
-            
-            set_service_status_resumed(item_id)
+            # Здесь разместите логику возобновления услуги
             
             LOGGER.info(f"Service {item_id} resumed successfully")
             return ProcessingModuleResponse("ok")
             
         except Exception as e:
-            LOGGER.error(f"Failed to resume service {item_id}: {e}")
-            return ProcessingModuleResponse(f"error: {str(e)}")
-    
-    def close_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
-        """Обработка закрытия услуги"""
-        LOGGER.info(f"Processing close command for item {item_id}")
+            LOGGER.exception(f"Error resuming service {item_id}: {e}")
+            return ProcessingModuleResponse("error")
+
+    def close_command(self, item_id=None, runningoperation=None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка команды close - закрытие услуги"""
+        LOGGER.info(f"Closing service {item_id} for project ${project_name}")
         
         try:
-            service = get_service_status(item_id)
-            if not service:
-                LOGGER.error(f"Service {item_id} not found")
-                return ProcessingModuleResponse("error: service not found")
-            
-            # TODO: Ваша логика закрытия услуги
-            
-            set_service_status_closed(item_id)
+            # Здесь разместите логику закрытия услуги
             
             LOGGER.info(f"Service {item_id} closed successfully")
             return ProcessingModuleResponse("ok")
             
         except Exception as e:
-            LOGGER.error(f"Failed to close service {item_id}: {e}")
-            return ProcessingModuleResponse(f"error: {str(e)}")
-    
-    def stat_command(self, module_id: Optional[int] = None, **kwargs) -> ProcessingModuleResponse:
-        """Обработка сбора статистики"""
-        LOGGER.info(f"Processing stat command for module {module_id}")
+            LOGGER.exception(f"Error closing service {item_id}: {e}")
+            return ProcessingModuleResponse("error")
+
+    def stat_command(self, module_id=None, **kwargs) -> ProcessingModuleResponse:
+        """Обработка команды stat - сбор статистики"""
+        LOGGER.info(f"Collecting stats for module {module_id} in project ${project_name}")
         
         try:
-            # TODO: Ваша логика сбора статистики
+            # Здесь разместите логику сбора статистики
             
-            db = get_db('billmgr')
-            services = db.select_query("""
-                SELECT i.id, i.status
-                FROM item i
-                JOIN pricelist pl ON pl.id = i.pricelist  
-                WHERE pl.type = %s AND i.status IN (2, 3)
-            """, (self.get_itemtypes()[0]['name'],)).all()
-            
-            LOGGER.info(f"Found {len(services)} active services for statistics")
-            
-            for service in services:
-                # TODO: Обновить статистику для услуги
-                pass
-            
-            LOGGER.info(f"Statistics collection completed for module {module_id}")
+            LOGGER.info(f"Stats collected successfully for module {module_id}")
             return ProcessingModuleResponse("ok")
             
         except Exception as e:
-            LOGGER.error(f"Failed to collect statistics for module {module_id}: {e}")
-            return ProcessingModuleResponse(f"error: {str(e)}")
-
-
-# Создать экземпляр обработчика и blueprint
-processing_module_handler = ${class_name}ProcessingModuleHandler()
-processing_module_blueprint = create_processing_module_blueprint(processing_module_handler)
+            LOGGER.exception(f"Error collecting stats for module {module_id}: {e}")
+            return ProcessingModuleResponse("error")
 '''
 
     def _get_processing_module_cli_template(self) -> str:

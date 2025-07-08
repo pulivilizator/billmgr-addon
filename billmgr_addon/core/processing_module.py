@@ -13,9 +13,7 @@ from flask import Blueprint, current_app
 from ..core.response import MgrResponse, MgrErrorResponse
 from ..db import get_db
 from ..utils.mgrctl import mgrctl_exec
-from ..utils.logging import setup_logger
-
-logger = setup_logger(__name__)
+from ..utils.logging import LOGGER
 
 
 class ProcessingModuleResponse(MgrResponse):
@@ -109,6 +107,7 @@ class ProcessingModuleHandler(ABC):
     
     def features_command(self, **kwargs) -> FeaturesResponse:
         """Обработка команды features"""
+        LOGGER.info("Processing features command")
         return FeaturesResponse(
             itemtypes=self.get_itemtypes(),
             features=self.get_features(),
@@ -127,49 +126,49 @@ class ProcessingModuleHandler(ABC):
         Returns:
             Ответ команды
         """
-        logger.info(f"Processing open command for item {item_id}")
+        LOGGER.info(f"Processing open command for item {item_id}")
         return ProcessingModuleResponse("ok")
     
     def resume_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
         """
         Обработка команды resume - возобновление услуги
         """
-        logger.info(f"Processing resume command for item {item_id}")
+        LOGGER.info(f"Processing resume command for item {item_id}")
         return ProcessingModuleResponse("ok")
     
     def suspend_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
         """
         Обработка команды suspend - приостановка услуги
         """
-        logger.info(f"Processing suspend command for item {item_id}")
+        LOGGER.info(f"Processing suspend command for item {item_id}")
         return ProcessingModuleResponse("ok")
     
     def close_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
         """
         Обработка команды close - закрытие услуги
         """
-        logger.info(f"Processing close command for item {item_id}")
+        LOGGER.info(f"Processing close command for item {item_id}")
         return ProcessingModuleResponse("ok")
     
     def start_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
         """
         Обработка команды start - запуск услуги
         """
-        logger.info(f"Processing start command for item {item_id}")
+        LOGGER.info(f"Processing start command for item {item_id}")
         return ProcessingModuleResponse("ok")
     
     def stop_command(self, item_id: Optional[int] = None, runningoperation: Optional[str] = None, **kwargs) -> ProcessingModuleResponse:
         """
         Обработка команды stop - остановка услуги
         """
-        logger.info(f"Processing stop command for item {item_id}")
+        LOGGER.info(f"Processing stop command for item {item_id}")
         return ProcessingModuleResponse("ok")
     
     def stat_command(self, module_id: Optional[int] = None, **kwargs) -> ProcessingModuleResponse:
         """
         Обработка команды stat - сбор статистики
         """
-        logger.info(f"Processing stat command for module {module_id}")
+        LOGGER.info(f"Processing stat command for module {module_id}")
         return ProcessingModuleResponse("ok")
 
 
@@ -210,6 +209,9 @@ def create_processing_module_blueprint(handler: ProcessingModuleHandler, bluepri
         user_id,
     ):
         """Выполнить команду processing module"""
+        LOGGER.info(f"Executing processing module command: {command}")
+        LOGGER.debug(f"Command parameters: item_id={item_id}, runningoperation={runningoperation}")
+        
         commands = {
             "features": handler.features_command,
             "open": handler.open_command,
@@ -223,14 +225,16 @@ def create_processing_module_blueprint(handler: ProcessingModuleHandler, bluepri
         
         command_handler = commands.get(command)
         if command_handler is None:
+            LOGGER.error(f"Unknown command: {command}")
             raise click.UsageError(f"Option --command has invalid value '{command}'")
 
         ctx = click.get_current_context()
         try:
             response = command_handler(**ctx.params)
+            LOGGER.info(f"Command {command} executed successfully")
             click.echo(response)
         except Exception as e:
-            logger.exception(e)
+            LOGGER.exception(f"Error executing command {command}: {e}")
             click.echo(MgrErrorResponse("Unknown processing module error"))
 
     return bp
@@ -247,56 +251,57 @@ def get_service_status(item_id: int, db_alias: str = "billmgr") -> Optional[Dict
     Returns:
         Словарь с данными услуги или None
     """
+    LOGGER.debug(f"Getting service status for item {item_id}")
     db = get_db(db_alias)
-    return db.select_query(
-        """
-        SELECT i.*, i.status as service_status
-        FROM item i
-        WHERE i.id = %(item_id)s
-        """, 
-        {"item_id": item_id}
-    ).one_or_none()
+    
+    try:
+        result = db.select_query(
+            "SELECT * FROM item WHERE id = %(item_id)s",
+            {"item_id": item_id}
+        ).one_or_none()
+        
+        if result:
+            LOGGER.debug(f"Service status found for item {item_id}: {result.get('status')}")
+        else:
+            LOGGER.warning(f"Service not found for item {item_id}")
+            
+        return result
+    except Exception as e:
+        LOGGER.exception(f"Error getting service status for item {item_id}: {e}")
+        return None
 
 
 def set_service_status_active(item_id: int):
-    """
-    Установить статус услуги как активная через mgrctl
-    
-    Args:
-        item_id: ID услуги
-    """
-    cmd = ["service.postopen", f"elid={item_id}", "sok=ok"]
-    mgrctl_exec(cmd)
+    """Установить статус услуги как активную"""
+    LOGGER.info(f"Setting service {item_id} status to active")
+    return mgrctl_exec(
+        ["item.edit", f"elid={item_id}", "status=active", "sok=ok"],
+        panel="billmgr"
+    )
 
 
 def set_service_status_suspended(item_id: int):
-    """
-    Установить статус услуги как приостановленная через mgrctl
-    
-    Args:
-        item_id: ID услуги
-    """
-    cmd = ["service.postsuspend", f"elid={item_id}", "sok=ok"]
-    mgrctl_exec(cmd)
+    """Установить статус услуги как приостановленную"""
+    LOGGER.info(f"Setting service {item_id} status to suspended")
+    return mgrctl_exec(
+        ["item.edit", f"elid={item_id}", "status=suspended", "sok=ok"],
+        panel="billmgr"
+    )
 
 
 def set_service_status_resumed(item_id: int):
-    """
-    Установить статус услуги как возобновленная через mgrctl
-    
-    Args:
-        item_id: ID услуги
-    """
-    cmd = ["service.postresume", f"elid={item_id}", "sok=ok"]
-    mgrctl_exec(cmd)
+    """Установить статус услуги как возобновленную"""
+    LOGGER.info(f"Setting service {item_id} status to resumed")
+    return mgrctl_exec(
+        ["item.edit", f"elid={item_id}", "status=active", "sok=ok"],
+        panel="billmgr"
+    )
 
 
 def set_service_status_closed(item_id: int):
-    """
-    Установить статус услуги как закрытая через mgrctl
-    
-    Args:
-        item_id: ID услуги
-    """
-    cmd = ["service.postclose", f"elid={item_id}", "sok=ok"]
-    mgrctl_exec(cmd) 
+    """Установить статус услуги как закрытую"""
+    LOGGER.info(f"Setting service {item_id} status to closed")
+    return mgrctl_exec(
+        ["item.edit", f"elid={item_id}", "status=closed", "sok=ok"],
+        panel="billmgr"
+    ) 

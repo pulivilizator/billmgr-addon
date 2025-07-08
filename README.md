@@ -205,46 +205,73 @@ class MyCloudEndpoint(ProjectRequiredEndpoint):
 
 ### Создание Processing Module
 
-1. **Создайте обработчик команд**:
+1. **Создайте обработчик** (`app/processing_module/handler.py`):
 
 ```python
-from billmgr_addon import ProcessingModuleHandler, ProcessingModuleResponse
+from typing import Dict, List
+from billmgr_addon import ProcessingModuleHandler, ProcessingModuleResponse, LOGGER
 
 class MyServiceProcessingModuleHandler(ProcessingModuleHandler):
-    def get_itemtypes(self):
+    def get_itemtypes(self) -> List[Dict[str, str]]:
         return [{"name": "myservice"}]
-    
-    def get_features(self):
+
+    def get_features(self) -> List[Dict[str, str]]:
         return [
             {"name": "features"},
             {"name": "open"},
             {"name": "suspend"},
             {"name": "resume"},
             {"name": "close"},
-            {"name": "stat"},
+            {"name": "stat"}
         ]
-    
-    def get_params(self):
+
+    def get_params(self) -> List[Dict[str, str]]:
         return [
             {"name": "api_url"},
-            {"name": "api_token", "crypted": "yes"},
+            {"name": "api_token", "crypted": "yes"}
         ]
-    
-    def open_command(self, item_id=None, **kwargs):
-        # Логика активации услуги
-        return ProcessingModuleResponse("ok")
+
+    def open_command(self, item_id=None, runningoperation=None, **kwargs) -> ProcessingModuleResponse:
+        """Активация услуги"""
+        LOGGER.info(f"Opening service {item_id}")
+        
+        try:
+            # Логика активации услуги
+            LOGGER.info(f"Service {item_id} opened successfully")
+            return ProcessingModuleResponse("ok")
+        except Exception as e:
+            LOGGER.exception(f"Error opening service {item_id}: {e}")
+            return ProcessingModuleResponse("error")
 ```
 
-2. **Создайте Blueprint и CLI приложение**:
+2. **Создайте CLI приложение** (`app/app.py`):
 
 ```python
-from billmgr_addon import create_processing_module_blueprint, create_processing_module_cli_app
-
-handler = MyServiceProcessingModuleHandler()
-blueprint = create_processing_module_blueprint(handler)
+from billmgr_addon import create_processing_module_cli_app, create_processing_module_blueprint, LOGGER
+from billmgr_addon.utils.logging import setup_logger
+from .processing_module.handler import MyServiceProcessingModuleHandler
 
 def create_processing_module_cli_app():
-    return create_processing_module_cli_app(blueprint)
+    """Создать CLI приложение для processing module"""
+    
+    # Настройка логгирования
+    logger = setup_logger(
+        name=billmgr_addon.LOGGER_NAME,
+        path=None,
+        filename='app.log', 
+        debug=False, 
+        remove_default_handlers=True,
+        enable_console=True
+    )
+    
+    billmgr_addon.LOGGER = logger
+    
+    handler = MyServiceProcessingModuleHandler()
+    blueprint = create_processing_module_blueprint(handler)
+    
+    app = create_processing_module_cli_app(blueprint)
+    LOGGER.info("Processing module CLI приложение создано успешно")
+    return app
 ```
 
 3. **Создайте CLI точку входа** (`processing_module_cli.py`):
@@ -283,6 +310,39 @@ if __name__ == "__main__":
 </mgrdata>
 ```
 
+5. **Добавьте импорт в main.xml**:
+
+```xml
+<import path="processing_module.xml"/>
+```
+
+### Логгирование в Processing Module
+
+Processing Module использует глобальный `LOGGER` из `billmgr_addon` для единообразного логгирования:
+
+```python
+from billmgr_addon import LOGGER
+
+class MyHandler(ProcessingModuleHandler):
+    def open_command(self, item_id=None, **kwargs):
+        # Информационные сообщения
+        LOGGER.info(f"Starting service activation for item {item_id}")
+        
+        # Отладочная информация
+        LOGGER.debug(f"Command parameters: {kwargs}")
+        
+        try:
+            # Логика обработки
+            pass
+        except Exception as e:
+            # Логгирование ошибок с полным стеком
+            LOGGER.exception(f"Failed to activate service {item_id}: {e}")
+            return ProcessingModuleResponse("error")
+        
+        LOGGER.info(f"Service {item_id} activated successfully")
+        return ProcessingModuleResponse("ok")
+```
+```
 
 ## CLI команды
 
