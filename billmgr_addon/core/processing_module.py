@@ -305,3 +305,37 @@ def set_service_status_closed(item_id: int):
         ["item.edit", f"elid={item_id}", "status=closed", "sok=ok"],
         panel="billmgr"
     ) 
+
+
+def create_processing_module_cli_app(handler):
+    """
+    Создать CLI приложение для processing module
+    
+    Автоматически импортирует handler из приложения и создает CLI
+    
+    Returns:
+        Flask: Настроенное CLI приложение
+    """
+    from . import create_common_app
+    
+    app = create_common_app()
+    
+    blueprint = create_processing_module_blueprint(handler)
+    app.register_blueprint(blueprint, cli_group=None)
+    LOGGER.info("Processing module CLI app created with custom handler")
+    
+    return app
+
+
+__all__ = [
+    "ProcessingModuleHandler",
+    "ProcessingModuleResponse", 
+    "FeaturesResponse",
+    "create_processing_module_blueprint",
+    "create_processing_module_cli_app",
+    "get_service_status",
+    "set_service_status_active",
+    "set_service_status_suspended", 
+    "set_service_status_resumed",
+    "set_service_status_closed",
+] 

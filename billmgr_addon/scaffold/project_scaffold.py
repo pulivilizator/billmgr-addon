@@ -100,7 +100,7 @@ class ProjectScaffold:
         }
 
     def _get_requirements_template(self) -> str:
-        return """git+https://github.com/pulivilizator/billmgr-addon.git#egg=billmgr-addon[pymysql]"""
+        return """git+https://github.com/pulivilizator/billmgr-addon.git#egg=billmgr-addon[mysqlclient]"""
 
     def _get_config_template(self) -> str:
         return """DEBUG = false
