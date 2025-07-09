@@ -171,13 +171,16 @@ def _create_processing_module_script(
         server_app_folder = Path(server_app_folder)
         actual_interpreter = server_app_folder / "venv/bin/python3"
         actual_processing_cli = server_app_folder / "processing_module_cli.py"
+        actual_project_path = server_app_folder
     else:
         actual_interpreter = interpreter_path
         actual_processing_cli = processing_module_cli_path
+        actual_project_path = cwd_path
 
     file_content = f"""#!/bin/bash
 export PYTHONIOENCODING=utf-8
 export LANG=ru_RU.UTF-8
+cd {actual_project_path}
 {actual_interpreter} {actual_processing_cli} "$@"
 """
     _create_executable_file(link_path, file_content)
