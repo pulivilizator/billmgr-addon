@@ -386,7 +386,6 @@ def remote_deploy(
             "--exclude=.idea",
             "--exclude=.vscode",
             "--exclude=.mypy_cache",
-            "--exclude=xml/src",
             "--exclude=venv",
         ]
 
@@ -432,7 +431,6 @@ def remote_deploy(
         if install:
             click.echo("Установка плагина...")
             
-            # Добавляем флаг processing module если он включен
             processing_module_flag = "--install-processing-module" if install_processing_module else "--no-install-processing-module"
             
             install_cmd = f"""ssh {ssh_options} {server} "cd {app_folder} && \\
