@@ -190,8 +190,8 @@ from billmgr_addon import (
     create_app as create_app_base, 
     create_cgi_app as create_cgi_app_base, 
     create_cli_app as create_cli_app_base,
-    create_processing_module_cli_app,
-    create_processing_module_blueprint,
+    create_processing_module_cli_app as create_processing_module_cli_app_base,
+    create_processing_module_blueprint as create_processing_module_blueprint_base,
     LOGGER
 )
 from billmgr_addon.utils.logging import setup_logger
@@ -248,10 +248,10 @@ def create_processing_module_cli_app():
     try:
         # Создание обработчика и blueprint
         handler = ${class_name}ProcessingModuleHandler()
-        blueprint = create_processing_module_blueprint(handler)
+        blueprint = create_processing_module_blueprint_base(handler)
         
         # Создание CLI приложения с blueprint
-        app = create_processing_module_cli_app(blueprint)
+        app = create_processing_module_cli_app_base(blueprint)
         
         LOGGER.info("Processing module CLI приложение создано успешно")
         return app

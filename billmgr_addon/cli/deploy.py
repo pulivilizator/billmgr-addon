@@ -11,7 +11,7 @@ from pathlib import Path
 import click
 import tomlkit
 
-from ..utils.files import create_plugin_symlinks, get_mgr_paths
+from ..utils.files import create_plugin_symlinks, get_mgr_paths, unregister_processing_module
 from ..utils.xml_builder import XMLBuilder
 
 
@@ -143,6 +143,11 @@ def uninstall(plugin_name):
             if link_path.exists():
                 link_path.unlink()
                 click.echo(f"  Удалена ссылка: {link_path}")
+
+        if unregister_processing_module(plugin_name):
+            click.echo(f"  Processing module pm{plugin_name} отменен")
+        else:
+            click.echo(f"  Предупреждение: не удалось отменить регистрацию processing module pm{plugin_name}")
 
         click.echo("Перезагрузка BILLmanager...")
         restart_cmd = f"/usr/local/mgr5/sbin/mgrctl -m billmgr exit"
