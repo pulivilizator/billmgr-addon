@@ -136,13 +136,18 @@ def uninstall(plugin_name):
             mgr_paths["mgr_plugin_handlers_path"] / plugin_name,
             mgr_paths["mgr_cgi_handlers_path"] / plugin_name,
             mgr_paths["mgr_xml_path"] / f"billmgr_mod_{plugin_name}.xml",
-            mgr_paths["mgr_processing_path"] / f"pm{plugin_name}",  # Processing module script
+            mgr_paths["mgr_processing_path"] / f"pm{plugin_name}",
+            mgr_paths["mgr_xml_path"] / f"billmgr_mod_pm{plugin_name}.xml",
         ]
 
         for link_path in links_to_remove:
             if link_path.exists():
-                link_path.unlink()
-                click.echo(f"  Удалена ссылка: {link_path}")
+                if link_path.is_symlink():
+                    link_path.unlink()
+                    click.echo(f"  Удалена ссылка: {link_path}")
+                else:
+                    link_path.unlink()
+                    click.echo(f"  Удален файл: {link_path}")
 
         if unregister_processing_module(plugin_name):
             click.echo(f"  Processing module pm{plugin_name} отменен")

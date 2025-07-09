@@ -1,28 +1,27 @@
 # -*- coding: utf-8 -*-
 
 import os
-from pathlib import Path
+import glob
+from pathlib import Path, PurePath
 from typing import Optional, Union
 
 
 def get_project_root() -> Path:
     """
-    Определение корневой директории проекта
+    Найти корневую папку проекта
+
     """
     env_project_root = os.environ.get("BILLMGR_ADDON_PROJECT_ROOT")
     if env_project_root:
         return Path(env_project_root).resolve()
 
-    current = Path.cwd()
-    while current != current.parent:
-        if (
-            (current / "config.toml").exists()
-            and (current / "xml").exists()
-            and (current / "app").exists()
-        ):
-            return current
-        current = current.parent
 
+    current_path = Path.cwd()
+    while current_path != current_path.parent:
+        if (current_path / "config.toml").exists():
+            return current_path
+        current_path = current_path.parent
+    
     return Path.cwd()
 
 
@@ -130,6 +129,34 @@ def create_plugin_xml_symlink(
     return link_path
 
 
+def create_processing_module_xml_file(
+    plugin_name: str, server_app_folder: Optional[Union[Path, str]] = None
+) -> Path:
+    """
+    Создать XML файл описания processing module из файла проекта
+
+    """
+    xml_file_path = mgr_xml_path.joinpath(f"billmgr_mod_pm{plugin_name}.xml")
+    
+    # Определяем путь к processing_module.xml в проекте
+    if server_app_folder:
+        source_xml_path = Path(server_app_folder) / "xml" / "src" / "processing_module.xml"
+    else:
+        source_xml_path = xml_path / "src" / "processing_module.xml"
+    
+    # Проверяем существование файла
+    if not source_xml_path.exists():
+        raise FileNotFoundError(f"Файл processing_module.xml не найден: {source_xml_path}")
+    
+    with open(source_xml_path, "r", encoding="utf-8") as f:
+        xml_content = f.read()
+    
+    with open(xml_file_path, "w", encoding="utf-8") as f:
+        f.write(xml_content)
+    
+    return xml_file_path
+
+
 def _create_processing_module_script(
     link_path: Union[Path, str], server_app_folder: Optional[Union[Path, str]] = None
 ) -> None:
@@ -209,6 +236,8 @@ def create_plugin_symlinks(
             processing_cli_exists = processing_module_cli_path.exists()
 
         if processing_cli_exists:
+            links["processing_module_xml"] = create_processing_module_xml_file(plugin_name, server_app_folder)
+            
             links["processing_module_script"] = create_plugin_processing_module_script(plugin_name, server_app_folder)
             
             register_processing_module(plugin_name)
