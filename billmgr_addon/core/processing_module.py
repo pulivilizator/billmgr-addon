@@ -185,33 +185,7 @@ def create_processing_module_blueprint(handler: ProcessingModuleHandler, bluepri
     """
     bp = Blueprint(blueprint_name, __name__)
 
-    @bp.cli.command("execute")
-    @click.option("--command", type=str, required=True)
-    @click.option("--subcommand", type=str)
-    @click.option("--id", "pricelist_id", type=int)
-    @click.option("--item", "item_id", type=int)
-    @click.option("--module", "module_id", type=int)
-    @click.option("--param", type=str)
-    @click.option("--value")
-    @click.option("--runningoperation")
-    @click.option("--level")
-    @click.option("--userid", "user_id")
-    def execute(
-        command,
-        subcommand,
-        pricelist_id,
-        item_id,
-        module_id,
-        param,
-        value,
-        runningoperation,
-        level,
-        user_id,
-    ):
-        """Выполнить команду processing module"""
-        LOGGER.info(f"Executing processing module command: {command}")
-        LOGGER.debug(f"Command parameters: item_id={item_id}, runningoperation={runningoperation}")
-        
+    def make_execute_command():
         commands = {
             "features": handler.features_command,
             "open": handler.open_command,
@@ -223,19 +197,50 @@ def create_processing_module_blueprint(handler: ProcessingModuleHandler, bluepri
             "stat": handler.stat_command,
         }
         
-        command_handler = commands.get(command)
-        if command_handler is None:
-            LOGGER.error(f"Unknown command: {command}")
-            raise click.UsageError(f"Option --command has invalid value '{command}'")
+        @bp.cli.command("execute")
+        @click.option("--command", type=str, required=True)
+        @click.option("--subcommand", type=str)
+        @click.option("--id", "pricelist_id", type=int)
+        @click.option("--item", "item_id", type=int)
+        @click.option("--module", "module_id", type=int)
+        @click.option("--param", type=str)
+        @click.option("--value")
+        @click.option("--runningoperation")
+        @click.option("--level")
+        @click.option("--userid", "user_id")
+        def execute(
+            command,
+            subcommand,
+            pricelist_id,
+            item_id,
+            module_id,
+            param,
+            value,
+            runningoperation,
+            level,
+            user_id,
+        ):
+            """Выполнить команду processing module"""
+            LOGGER.info(f"Executing processing module command: {command}")
+            LOGGER.debug(f"Command parameters: item_id={item_id}, runningoperation={runningoperation}")
+            
+            command_handler = commands.get(command)
+            if command_handler is None:
+                LOGGER.error(f"Unknown command: {command}")
+                raise click.UsageError(f"Option --command has invalid value '{command}'")
 
-        ctx = click.get_current_context()
-        try:
-            response = command_handler(**ctx.params)
-            LOGGER.info(f"Command {command} executed successfully")
-            click.echo(response)
-        except Exception as e:
-            LOGGER.exception(f"Error executing command {command}: {e}")
-            click.echo(MgrErrorResponse("Unknown processing module error"))
+            ctx = click.get_current_context()
+            try:
+                response = command_handler(**ctx.params)
+                LOGGER.info(f"Command {command} executed successfully")
+                click.echo(response)
+            except Exception as e:
+                LOGGER.exception(f"Error executing command {command}: {e}")
+                click.echo(MgrErrorResponse("Unknown processing module error"))
+        
+        return execute
+    
+    make_execute_command()
 
     return bp
 
