@@ -11,7 +11,7 @@ from pathlib import Path
 import click
 import tomlkit
 
-from ..utils.files import create_plugin_symlinks, get_mgr_paths, unregister_processing_module
+from ..utils.files import create_plugin_symlinks, get_mgr_paths
 from ..utils.xml_builder import XMLBuilder
 
 
@@ -74,7 +74,7 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache, i
             click.echo(f"  {link_type}: {link_path}")
 
         if server_app_folder and update_xml_cache:
-            click.echo("🔄 Обновление XML кэша...")
+            click.echo("Обновление XML кэша...")
 
             meta_cache_result = subprocess.run(
                 ["/usr/local/mgr5/sbin/xmlinstall", "-m", "billmgr", "--meta-cache", "--apply"],
@@ -105,7 +105,7 @@ def install(plugin_name, force, xml_path, server_app_folder, update_xml_cache, i
                     f"Предупреждение: ошибка обновления языкового кэша: {lang_cache_result.stderr}"
                 )
             else:
-                click.echo("  ✅ XML кэш обновлен")
+                click.echo("  XML кэш обновлен")
 
         if not server_app_folder:
             click.echo("Перезагрузка BILLmanager...")
@@ -148,12 +148,7 @@ def uninstall(plugin_name):
                 else:
                     link_path.unlink()
                     click.echo(f"  Удален файл: {link_path}")
-
-        if unregister_processing_module(plugin_name):
-            click.echo(f"  Processing module pm{plugin_name} отменен")
-        else:
-            click.echo(f"  Предупреждение: не удалось отменить регистрацию processing module pm{plugin_name}")
-
+                    
         click.echo("Перезагрузка BILLmanager...")
         restart_cmd = f"/usr/local/mgr5/sbin/mgrctl -m billmgr exit"
         reload_result = subprocess.run(restart_cmd, capture_output=True, text=True)
@@ -472,7 +467,7 @@ def remote_deploy(
 
         if not restart_billmgr:
             click.echo("Для перезапуска BILLmanager выполните:")
-            click.echo(f"   ssh {server} 'systemctl restart billmgr'")
+            click.echo(f"   ssh {server} '/usr/local/mgr5/sbin/mgrctl -m billmgr exit'")
 
     except Exception as e:
         raise click.ClickException(f"Ошибка удаленного деплоя: {e}")

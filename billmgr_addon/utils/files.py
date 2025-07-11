@@ -9,7 +9,6 @@ from typing import Optional, Union
 def get_project_root() -> Path:
     """
     Найти корневую папку проекта
-
     """
     env_project_root = os.environ.get("BILLMGR_ADDON_PROJECT_ROOT")
     if env_project_root:
@@ -138,13 +137,11 @@ def create_processing_module_xml_file(
     """
     xml_file_path = mgr_xml_path.joinpath(f"billmgr_mod_pm{plugin_name}.xml")
     
-    # Определяем путь к processing_module.xml в проекте
     if server_app_folder:
         source_xml_path = Path(server_app_folder) / "xml" / "src" / "processing_module.xml"
     else:
         source_xml_path = xml_path / "src" / "processing_module.xml"
     
-    # Проверяем существование файла
     if not source_xml_path.exists():
         raise FileNotFoundError(f"Файл processing_module.xml не найден: {source_xml_path}")
     
@@ -231,7 +228,6 @@ def create_plugin_symlinks(
     }
 
     if install_processing_module:
-        # Проверяем существование processing_module_cli.py
         processing_cli_exists = False
         if server_app_folder:
             processing_cli_exists = (Path(server_app_folder) / "processing_module_cli.py").exists()
@@ -242,8 +238,6 @@ def create_plugin_symlinks(
             links["processing_module_xml"] = create_processing_module_xml_file(plugin_name, server_app_folder)
             
             links["processing_module_script"] = create_plugin_processing_module_script(plugin_name, server_app_folder)
-            
-            register_processing_module(plugin_name)
 
     return links
 
@@ -276,62 +270,3 @@ def get_mgr_paths() -> dict:
         "mgr_processing_path": mgr_processing_path,
     }
 
-
-def register_processing_module(plugin_name: str, module_type: Optional[str] = None) -> bool:
-    """
-    Зарегистрировать processing module в BILLmanager
-    
-    Args:
-        plugin_name: Имя плагина
-        module_type: Тип модуля (по умолчанию равен plugin_name)
-    """
-    from ..utils.mgrctl import mgrctl_exec
-    from ..utils.logging import LOGGER
-    
-    if module_type is None:
-        module_type = plugin_name
-    
-    try:
-        LOGGER.info(f"Registering processing module pm{plugin_name} for type {module_type}")
-        
-        mgrctl_exec([
-            "processing.add.settings",
-            f"module=pm{plugin_name}",
-            f"type={module_type}",
-            f"name={plugin_name.capitalize()} Processing Module",
-            "sok=ok",
-            "out=xml",
-        ], panel="billmgr")
-        
-        LOGGER.info(f"Processing module pm{plugin_name} registered successfully")
-        return True
-            
-    except Exception as e:
-        LOGGER.exception(f"Error registering processing module pm{plugin_name}: {e}")
-        return False
-
-
-def unregister_processing_module(plugin_name: str) -> bool:
-    """
-    Отменить регистрацию processing module в BILLmanager
-    """
-    from ..utils.mgrctl import mgrctl_exec
-    from ..utils.logging import LOGGER
-    
-    try:
-        LOGGER.info(f"Unregistering processing module pm{plugin_name}")
-        
-        # Удаляем модуль напрямую (если не существует, команда завершится с ошибкой)
-        mgrctl_exec([
-            "processing.delete",
-            f"module=pm{plugin_name}",
-            "sok=ok",
-            "out=xml",
-        ], panel="billmgr")
-        
-        LOGGER.info(f"Processing module pm{plugin_name} unregistered successfully")
-        return True
-            
-    except Exception as e:
-        LOGGER.warning(f"Could not unregister processing module pm{plugin_name}: {e}")
-        return True  # Считаем успешным, если модуль не найден
