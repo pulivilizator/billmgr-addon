@@ -21,20 +21,6 @@ class UuidOptionValueError(ValueError):
 
 class MgrForm(MgrUI):
     null_option_key = "null"
-    # title = MgrNodeAttribute('text', default='')
-    # attributes = {
-    #     'nonext': '???',
-    #     'clear': '???',
-    #     'title': 'text', # parent_title
-    #     'autocomplete': 'on/off',
-    #     'cancelrefresh': 'yes/no',
-    #     'nosubmit': 'yes/no',
-    #     'nocancel': 'yes/no',
-    #     'noback': 'yes/no',
-    #     'progress': 'yes/notime/wait',
-    #     'action': 'text',
-    #     'helpurl': 'text',
-    # }
 
     @classmethod
     def get_null_option(cls):
@@ -75,12 +61,9 @@ class MgrForm(MgrUI):
             }
 
     def _init_data(self):
-        # self.params = {}
         self.field_data = {}
         self.field_options = {}
 
-        # self.parent_id = self._get_root_child_element_text("plid")
-        # self.parent_name = self._get_root_child_element_text('plname')
         self.parent_id = None
         self.parent_name = None
         self.updated_field = None
@@ -110,12 +93,10 @@ class MgrForm(MgrUI):
                         # TODO - parse 'price' and 'action' elements properly
                         column: MgrListData.Column = list_field.columns[column_name]
                         column_value = column.__class__.get_value_from_element(column_value_element)
-                        # data_row[column_name] = column_value_element.text
                         data_row[column_name] = column_value
 
                     self.field_data[list_name].append(data_row)
 
-            # elif element.tag not in [self.title_tag, "metadata", "messages", "doc"]:
             elif element.tag not in ["metadata", "messages", "doc"]:
                 name = element.tag
                 self.field_data[name] = element.text

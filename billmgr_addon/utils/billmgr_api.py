@@ -344,19 +344,7 @@ class BillmgrAPI:
     ):
         """
         Создать HTTP сессию
-
-        Args:
-            url: URL API
-            interface: Интерфейс для подключения
-            verify_ssl: Проверка SSL
-            headers: Заголовки
-            cookies: Cookies
-            async_session: Создать асинхронную сессию
-
-        Returns:
-            HTTP сессия (httpx.Client или httpx.AsyncClient)
         """
-        # Привязка сессии к указанному локальному адресу
         transport = None
         addr = interface
         if addr:
@@ -389,18 +377,6 @@ class BillmgrAPI:
     ) -> PreparedRequest:
         """
         Подготовить запрос к API
-
-        Args:
-            method: HTTP метод
-            func_name: Имя функции API
-            params: Параметры запроса
-            data: Данные запроса
-            cookies: Cookies
-            headers: Заголовки
-            timeout: Таймаут
-
-        Returns:
-            PreparedRequest: Подготовленный запрос
         """
         url = self.url
 
@@ -461,19 +437,6 @@ class BillmgrAPI:
     ):
         """
         Построить HTTP запрос
-
-        Args:
-            method: HTTP метод
-            func_name: Имя функции API
-            params: Параметры запроса
-            data: Данные запроса
-            cookies: Cookies
-            headers: Заголовки
-            timeout: Таймаут
-            async_session: Использовать асинхронную сессию
-
-        Returns:
-            httpx.Request: Построенный запрос
         """
         request = self._prepare_request(
             method,

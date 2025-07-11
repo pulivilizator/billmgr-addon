@@ -24,17 +24,6 @@ pip install "git+ssh://git@github.com/path/billmgr-addon.git"
 ```
 
 
-### Локальная разработка
-
-```bash
-git clone https://github.com/path/billmgr-addon.git
-cd billmgr-addon
-python -m venv venv
-source venv/bin/activate
-pip install -e ".[dev,pymysql]"
-```
-
-
 ## Быстрый старт
 
 ### 1. Настройка окружения
@@ -48,10 +37,8 @@ pip install "git+ssh://git@github.com/path/billmgr-addon.git"
 ### 2. Создание нового проекта
 
 ```bash
-billmgr-addon create-project
+billmgr-addon create-project --name NAME
 ```
-
-
 
 ### 3. Настройка путей (опционально)
 
@@ -86,12 +73,6 @@ LOGS_PATH = "logs"
 billmgr-addon deploy remote-deploy -e dev/prod --plugin-name PLUGIN_NAME
 ```
 
-- Для установки без деплоя(находясь на сервере)
-
-```bash
-sudo billmgr-addon install --plugin-name PLUGIN_NAME
-sudo systemctl restart billmgr
-```
 
 ## Структура проекта
 

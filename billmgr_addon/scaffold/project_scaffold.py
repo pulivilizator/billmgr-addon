@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#
+
 import string
 from pathlib import Path
 from typing import Dict
@@ -97,6 +97,7 @@ class ProjectScaffold:
             # CLI Blueprint
             "app/blueprints/cli/__init__.py": self._get_cli_init_template(),
             "app/blueprints/cli/commands.py": self._get_cli_commands_template(),
+            "app/blueprints/cli/installation.py": self._get_cli_installation_template(),
             # XML файлы
             "xml/src/main.xml": self._get_main_xml_template(),
             "xml/src/example_list.xml": self._get_example_list_xml_template(),
@@ -433,18 +434,16 @@ CLI интерфейс для ${project_name}
 import sys
 from pathlib import Path
 
-# Добавляем текущую директорию в Python path
+
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Импортируем приложение из папки app
 from app.app import create_cli_app
 
 if __name__ == "__main__":
     app = create_cli_app()
-    # Запускаем CLI приложение
     with app.app_context():
-        from billmgr_addon.cli import main
-        main()
+        app.cli.main()
+
 '''
 
     def _get_build_xml_template(self) -> str:
@@ -751,7 +750,6 @@ def get_${plugin_name}_api_credentials() -> tuple:
     """Получает настройки API для processing module pm${plugin_name} из БД BILLmanager"""
     db = get_db('billmgr')
 
-    # Получаем api_url из processingparam
     api_url_result = db.select_query(
         """
             SELECT pp.*
@@ -764,7 +762,6 @@ def get_${plugin_name}_api_credentials() -> tuple:
 
     api_url = api_url_result['value'] if api_url_result else None
 
-    # Получаем api_token из processingcryptedparam
     api_token_result = db.select_query(
         """
             SELECT pp.*
@@ -826,6 +823,13 @@ from flask import Blueprint
 import click
 from billmgr_addon import LOGGER, get_db, mgrctl_exec
 from .commands import restart_panel_command, test_command
+from .installation import (
+    install_all, 
+    install_plugin,
+    install_processing_module, 
+    check_installation, 
+    uninstall_plugin
+)
 
 bp = Blueprint("cli", __name__)
 
@@ -838,6 +842,31 @@ def test():
 def restart_panel():
     """Перезапустить панель BILLmanager"""
     restart_panel_command()
+
+@bp.cli.command("install")
+def install():
+    """Полная установка плагина"""
+    install_all()
+
+@bp.cli.command("install_plugin")
+def install_plugin_cmd():
+    """Установка только плагина (без processing module)"""
+    install_plugin()
+
+@bp.cli.command("install_processing_module")
+def install_processing_module_cmd():
+    """Установка только processing module"""
+    install_processing_module()
+
+@bp.cli.command("check")
+def check():
+    """Проверка состояния установки"""
+    check_installation()
+
+@bp.cli.command("uninstall")
+def uninstall():
+    """Удаление плагина"""
+    uninstall_plugin()
 '''
 
     def _get_cli_commands_template(self) -> str:
@@ -887,4 +916,680 @@ def restart_panel_command():
         LOGGER.error(f"Failed to restart panel: {e}")
         click.echo(f"restart_panel failed: {e}")
         raise
+'''
+
+    def _get_cli_installation_template(self) -> str:
+        return '''# -*- coding: utf-8 -*-
+
+import click
+import json
+import secrets
+import string
+from pathlib import Path
+from tomlkit.toml_file import TOMLFile
+from collections import namedtuple
+from typing import List
+from billmgr_addon import LOGGER, get_db, mgrctl_exec
+from billmgr_addon.utils.files import (
+    create_plugin_app_link, 
+    create_cgi_app_link, 
+    create_plugin_xml_symlink,
+    config_path, 
+    cwd_path
+)
+
+EnumerationItem = namedtuple("EnumerationItem", ["intname", "name", "name_ru"])
+
+PLUGIN_NAME = "${project_name}"
+MODULE_NAME = f"pm{PLUGIN_NAME}"
+
+
+def install_all():
+    click.echo("=== Полная установка плагина ===")
+    _setup_billmgr_api_url()
+    _setup_forwarded_secret()
+    _create_plugin_symlinks()
+    _create_processing_module_symlinks()
+    _create_itemtype()
+    _create_processingmodule()
+    _restart_panel()
+    _create_enumerations()
+    _create_pricelist()
+    _edit_prices()
+    _activate_pricelist()
+    click.echo("=== Установка завершена ===")
+
+
+def install_plugin():
+    click.echo("=== Установка плагина ===")
+    _setup_billmgr_api_url()
+    _setup_forwarded_secret()
+    _create_plugin_symlinks()
+    _restart_panel()
+    click.echo("=== Установка плагина завершена ===")
+
+
+def install_processing_module():
+    click.echo("=== Установка Processing Module ===")
+    _create_processing_module_symlinks()
+    _create_itemtype()
+    _create_processingmodule()
+    _restart_panel()
+    _create_enumerations()
+    _create_pricelist()
+    click.echo("=== Установка Processing Module завершена ===")
+
+
+def _get_billmgr_param_value(name):
+    try:
+        paramlist_response = mgrctl_exec(
+            [
+                "paramlist",
+                f"elid={name}",
+                "out=json",
+            ],
+            capture_output=True
+        )
+        
+        if paramlist_response is None:
+            return None
+            
+        if isinstance(paramlist_response, bytes):
+            paramlist_response = paramlist_response.decode('utf-8')
+        
+        paramlist_data = json.loads(paramlist_response)
+        param_elem = paramlist_data["doc"]["elem"][0][name]
+        value = param_elem.get("$")
+        return value
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения параметра {name}: {e}")
+        return None
+
+
+def _set_billmgr_param_value(name, value):
+    try:
+        mgrctl_exec(
+            [
+                "paramlist.edit",
+                f"elid={name}",
+                f"value={value}",
+                "sok=ok",
+            ]
+        )
+        click.echo(f"Параметр {name} установлен в конфигурации BILLmanager")
+    except Exception as e:
+        LOGGER.error(f"Ошибка установки параметра {name}: {e}")
+        click.echo(f"Ошибка установки параметра {name}: {e}")
+
+
+def _setup_forwarded_secret():
+    click.echo("Настройка ForwardedSecret...")
+    
+    try:
+        forwarded_secret = _get_billmgr_param_value("ForwardedSecret")
+        
+        if forwarded_secret is None or forwarded_secret == "":
+            click.echo("Параметр 'ForwardedSecret' не установлен в конфигурации BILLmanager")
+            click.echo("Он необходим для безопасного взаимодействия плагина с BILLmanager")
+            
+            forwarded_secret_length = 32
+            random_forwarded_secret = ''.join(
+                secrets.choice(string.ascii_letters + string.digits) 
+                for _ in range(forwarded_secret_length)
+            )
+            
+            app_config_file = TOMLFile(config_path)
+            app_config = app_config_file.read()
+            config_forwarded_secret = app_config.get("FORWARDED_SECRET", "")
+            
+            options = [
+                {"id": 1, "name": f"Использовать случайно сгенерированный: '{random_forwarded_secret}'"},
+                {"id": 2, "name": f"Использовать значение из config.toml: '{config_forwarded_secret}'"},
+                {"id": 3, "name": "Ввести свое значение"},
+                {"id": 4, "name": "Пропустить настройку"}
+            ]
+            
+            click.echo("Выберите вариант:")
+            for option in options:
+                click.echo(f"  {option['id']}. {option['name']}")
+            
+            choice = click.prompt("Ваш выбор", type=click.IntRange(1, 4), default=1)
+            
+            if choice == 1:
+                forwarded_secret = random_forwarded_secret
+            elif choice == 2:
+                forwarded_secret = config_forwarded_secret
+            elif choice == 3:
+                forwarded_secret = click.prompt("Введите ForwardedSecret", default="")
+            else:
+                click.echo("Настройка ForwardedSecret пропущена")
+                return
+            
+            if forwarded_secret:
+                _set_billmgr_param_value("ForwardedSecret", forwarded_secret)
+                
+                app_config["FORWARDED_SECRET"] = forwarded_secret
+                app_config_file.write(app_config)
+                click.echo("ForwardedSecret сохранен в config.toml")
+        else:
+            click.echo(f"ForwardedSecret уже настроен: {'*' * 8}")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка настройки ForwardedSecret: {e}")
+        click.echo(f"Ошибка настройки ForwardedSecret: {e}")
+
+
+def _setup_billmgr_api_url():
+    click.echo("Настройка URL API BILLmanager...")
+    
+    try:
+        server_name = _get_billmgr_param_value("ServerNameParam")
+        if server_name:
+            billmgr_api_url = f"https://{server_name}/billmgr"
+            
+            app_config_file = TOMLFile(config_path)
+            app_config = app_config_file.read()
+            app_config["BILLMGR_API_URL"] = billmgr_api_url
+            app_config_file.write(app_config)
+            
+            click.echo(f"BILLMGR_API_URL установлен: {billmgr_api_url}")
+        else:
+            click.echo("Не удалось получить ServerNameParam, настройте BILLMGR_API_URL вручную")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка настройки BILLMGR_API_URL: {e}")
+        click.echo(f"Ошибка настройки BILLMGR_API_URL: {e}")
+
+
+def _create_plugin_symlinks():
+    click.echo("Создание символических ссылок...")
+    
+    try:
+        plugin_name = cwd_path.name
+        
+        plugin_app_link = create_plugin_app_link(plugin_name)
+        click.echo(f"Создана ссылка на обработчик плагина: {plugin_app_link}")
+        
+        cgi_app_link = create_cgi_app_link(plugin_name)
+        click.echo(f"Создана ссылка на CGI обработчик: {cgi_app_link}")
+        
+        plugin_xml_symlink = create_plugin_xml_symlink(plugin_name)
+        click.echo(f"Создана ссылка на XML конфигурацию: {plugin_xml_symlink}")
+        
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания символических ссылок: {e}")
+        click.echo(f"Ошибка создания символических ссылок: {e}")
+
+
+def _restart_panel():
+    click.echo("Перезапуск панели BILLmanager...")
+    
+    if click.confirm("Перезапустить панель BILLmanager? (необходимо для применения изменений)"):
+        try:
+            mgrctl_exec(["-R"])
+            click.echo("Панель BILLmanager перезапущена")
+        except Exception as e:
+            LOGGER.error(f"Ошибка перезапуска панели: {e}")
+            click.echo(f"Ошибка перезапуска панели: {e}")
+    else:
+        click.echo("Перезапуск панели пропущен")
+        click.echo("ВНИМАНИЕ: Перезапустите панель вручную для применения изменений!")
+
+
+def check_installation():
+    click.echo("=== Проверка установки ===")
+    
+    try:
+        app_config_file = TOMLFile(config_path)
+        app_config = app_config_file.read()
+        
+        click.echo("Конфигурация плагина:")
+        click.echo(f"  BILLMGR_API_URL: {app_config.get('BILLMGR_API_URL', 'НЕ УСТАНОВЛЕН')}")
+        click.echo(f"  FORWARDED_SECRET: {'УСТАНОВЛЕН' if app_config.get('FORWARDED_SECRET') else 'НЕ УСТАНОВЛЕН'}")
+        
+        try:
+            db = get_db("billmgr")
+            row = db.select_query("SELECT 'connection_test' AS test").one_or_none()
+            click.echo(f"  Подключение к БД: ОК ({row['test']})")
+        except Exception as e:
+            click.echo(f"  Подключение к БД: ОШИБКА ({e})")
+        
+        plugin_name = cwd_path.name
+        files_to_check = [
+            cwd_path / "cgi.py",
+            cwd_path / "cli.py", 
+            cwd_path / "xml" / "build.xml",
+            Path(f"/usr/local/mgr5/addon/{plugin_name}"),
+            Path(f"/usr/local/mgr5/etc/xml/{plugin_name}.xml"),
+        ]
+        
+        click.echo("Файлы и ссылки:")
+        for file_path in files_to_check:
+            status = "ОК" if file_path.exists() else "ОТСУТСТВУЕТ"
+            click.echo(f"  {file_path}: {status}")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка проверки установки: {e}")
+        click.echo(f"Ошибка проверки установки: {e}")
+
+
+def uninstall_plugin():
+    click.echo("=== Удаление плагина ===")
+    
+    if not click.confirm("Вы уверены, что хотите удалить плагин?"):
+        click.echo("Удаление отменено")
+        return
+    
+    try:
+        plugin_name = cwd_path.name
+        
+        links_to_remove = [
+            Path(f"/usr/local/mgr5/addon/{plugin_name}"),
+            Path(f"/usr/local/mgr5/etc/xml/{plugin_name}.xml"),
+        ]
+        
+        for link_path in links_to_remove:
+            if link_path.exists():
+                link_path.unlink()
+                click.echo(f"Удалена ссылка: {link_path}")
+        
+        click.echo("Плагин удален")
+        click.echo("Рекомендуется перезапустить панель BILLmanager")
+        
+    except Exception as e:
+        LOGGER.error(f"Ошибка удаления плагина: {e}")
+        click.echo(f"Ошибка удаления плагина: {e}") 
+
+
+def _create_processing_module_symlinks():
+    click.echo("Создание символических ссылок processing module...")
+    
+    try:
+        processing_module_cli_link = Path(f"/usr/local/mgr5/addon/{MODULE_NAME}")
+        if not processing_module_cli_link.exists():
+            processing_module_cli_link.symlink_to(cwd_path / "processing_module_cli.py")
+            click.echo(f"Создана ссылка на processing module CLI: {processing_module_cli_link}")
+        
+        processing_module_xml_link = Path(f"/usr/local/mgr5/etc/xml/{MODULE_NAME}.xml")
+        if not processing_module_xml_link.exists():
+            processing_module_xml_link.symlink_to(cwd_path / "xml" / "build.xml")
+            click.echo(f"Создана ссылка на processing module XML: {processing_module_xml_link}")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания символических ссылок processing module: {e}")
+        click.echo(f"Ошибка создания символических ссылок processing module: {e}")
+
+
+def _get_processingmodule():
+    try:
+        db = get_db("billmgr")
+        processingmodule = db.select_query(
+            """
+            SELECT *
+            FROM processingmodule
+            WHERE module = %(module)s
+            """,
+            {"module": MODULE_NAME}
+        ).one_or_none()
+        return processingmodule
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения processing module: {e}")
+        return None
+
+
+def _get_itemtype():
+    try:
+        db = get_db("billmgr")
+        itemtype = db.select_query(
+            """
+            SELECT it.*
+            FROM itemtype it
+            WHERE it.intname = %(intname)s
+            """,
+            {"intname": PLUGIN_NAME}
+        ).one_or_none()
+        return itemtype
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения itemtype: {e}")
+        return None
+
+
+def _get_pricelist():
+    try:
+        db = get_db("billmgr")
+        pricelist = db.select_query(
+            """
+            SELECT pl.*
+            FROM pricelist pl
+            WHERE pl.intname = %(intname)s
+            """,
+            {"intname": PLUGIN_NAME}
+        ).one_or_none()
+        return pricelist
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения pricelist: {e}")
+        return None
+
+
+def _get_enumeration(intname):
+    try:
+        db = get_db("billmgr")
+        enumeration = db.select_query(
+            """
+            SELECT e.*
+            FROM enumeration e
+            WHERE e.intname = %(intname)s
+            """,
+            {"intname": intname}
+        ).one_or_none()
+        return enumeration
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения enumeration {intname}: {e}")
+        return None
+
+
+def _get_active_projects():
+    try:
+        db = get_db("billmgr")
+        projects = db.select_query(
+            """
+            SELECT pj.*
+            FROM project pj
+            WHERE pj.active = 'on'
+            """
+        ).all()
+        return projects
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения активных проектов: {e}")
+        return []
+
+
+def _get_datacenters():
+    try:
+        db = get_db("billmgr")
+        datacenters = db.select_query(
+            """
+            SELECT dc.*
+            FROM datacenter dc
+            WHERE external_id IS NULL
+            """
+        ).all()
+        return datacenters
+    except Exception as e:
+        LOGGER.error(f"Ошибка получения datacenters: {e}")
+        return []
+
+
+def _options_prompt(options: list, message: str, key_field: str = 'id', label_field: str = 'name', default=None, type_=None):
+    if not options:
+        click.echo("Нет доступных опций для выбора")
+        return None
+        
+    choices = click.Choice([str(o[key_field]) for o in options])
+    first_option_key = options[0][key_field]
+    default_option_key = default if default is not None else first_option_key
+
+    def format_choice(option):
+        choice_string = f" [{option[key_field]}] - {option[label_field]}"
+        if option[key_field] == default_option_key: 
+            choice_string += " (по умолчанию)"
+        return choice_string
+
+    default_choice = str(default_option_key)
+    choices_string = "\n".join([format_choice(o) for o in options])
+    input_value = click.prompt(
+        f"{message}\n{choices_string}\n",
+        default=default_choice,
+        type=choices,
+        show_default=False,
+        show_choices=False,
+    )
+    if type_ is not None:
+        return type_(input_value)
+    return input_value
+
+
+def _create_itemtype():
+    click.echo("Создание itemtype...")
+    
+    try:
+        itemtype = _get_itemtype()
+        
+        if not itemtype:
+            mgrctl_exec([
+                "itemtype.edit",
+                f"intname={PLUGIN_NAME}",
+                f"name={PLUGIN_NAME.title()}",
+                f"name_ru={PLUGIN_NAME.title()}",
+                "nostopholidays=on",
+                "closetype=1",
+                "closesubtype=0",
+                "monthly=on",
+                "quarterly=on",
+                "semiannual=on",
+                "annually=on",
+                "sok=ok",
+            ])
+            click.echo(f"ItemType {PLUGIN_NAME} создан")
+        else:
+            click.echo(f"ItemType {PLUGIN_NAME} уже существует")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания itemtype: {e}")
+        click.echo(f"Ошибка создания itemtype: {e}")
+
+
+def _create_processingmodule():
+    click.echo("Создание processing module...")
+    
+    try:
+        processingmodule = _get_processingmodule()
+        
+        if not processingmodule:
+            datacenters = _get_datacenters()
+            if datacenters:
+                datacenter_id = _options_prompt(
+                    datacenters,
+                    f"Выберите datacenter для processing module '{PLUGIN_NAME}'",
+                    key_field="id",
+                    label_field="name",
+                    type_=int,
+                )
+            else:
+                datacenter_id = click.prompt("Введите ID datacenter", type=int, default=1)
+            
+            mgrctl_exec([
+                "processing.add.settings",
+                f"module={MODULE_NAME}",
+                f"type={PLUGIN_NAME}",
+                f"name={PLUGIN_NAME.title()}",
+                f"datacenter={datacenter_id}",
+                "sok=ok",
+                "out=xml",
+            ])
+            click.echo(f"Processing module {MODULE_NAME} создан")
+        else:
+            click.echo(f"Processing module {MODULE_NAME} уже существует")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания processing module: {e}")
+        click.echo(f"Ошибка создания processing module: {e}")
+
+
+def _create_enumerations():
+    click.echo("Создание перечислений...")
+    
+    enumerations = [
+        {
+            "intname": f"{PLUGIN_NAME}_status",
+            "name": f"{PLUGIN_NAME.title()} Status",
+            "name_ru": f"Статус {PLUGIN_NAME}",
+            "items": [
+                EnumerationItem("active", "Active", "Активен"),
+                EnumerationItem("inactive", "Inactive", "Неактивен"),
+                EnumerationItem("suspended", "Suspended", "Приостановлен"),
+            ]
+        }
+    ]
+    
+    try:
+        for enum_data in enumerations:
+            _create_enumeration(
+                enum_data["intname"],
+                enum_data["name"],
+                enum_data["name_ru"],
+                enum_data["items"]
+            )
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания перечислений: {e}")
+        click.echo(f"Ошибка создания перечислений: {e}")
+
+
+def _create_enumeration(intname, name, name_ru, items: List[EnumerationItem]):
+    try:
+        enumeration = _get_enumeration(intname)
+        
+        if not enumeration:
+            mgrctl_exec([
+                "enumeration.edit",
+                f"intname={intname}",
+                f"name={name}",
+                f"name_ru={name_ru}",
+                "sok=ok",
+            ])
+            
+            enumeration = _get_enumeration(intname)
+            
+            if enumeration and items:
+                for item in items:
+                    mgrctl_exec([
+                        "enumerationitem.edit",
+                        f"plid={enumeration['id']}",
+                        f"intname={item.intname}",
+                        f"name={item.name}",
+                        f"name_ru={item.name_ru}",
+                        "sok=ok",
+                    ])
+            
+            click.echo(f"Перечисление {intname} создано")
+        else:
+            click.echo(f"Перечисление {intname} уже существует")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания перечисления {intname}: {e}")
+        click.echo(f"Ошибка создания перечисления {intname}: {e}")
+
+
+def _create_pricelist():
+    click.echo("Создание pricelist...")
+    
+    try:
+        pricelist = _get_pricelist()
+        
+        if not pricelist:
+            processingmodule = _get_processingmodule()
+            itemtype = _get_itemtype()
+            
+            if not processingmodule:
+                click.echo("Processing module не найден. Создайте его сначала.")
+                return
+                
+            if not itemtype:
+                click.echo("ItemType не найден. Создайте его сначала.")
+                return
+            
+            active_projects = _get_active_projects()
+            if active_projects:
+                project_id = _options_prompt(
+                    active_projects,
+                    "Выберите проект для создания pricelist",
+                    key_field="id",
+                    label_field="name",
+                    type_=int,
+                )
+            else:
+                project_id = click.prompt("Введите ID проекта", type=int, default=1)
+            
+            mgrctl_exec([
+                "pricelist.add.step2",
+                f"name_ru={PLUGIN_NAME.title()}",
+                f"name={PLUGIN_NAME.title()}",
+                f"intname={PLUGIN_NAME}",
+                f"processingmodule={processingmodule['id']}",
+                f"itemtype={itemtype['id']}",
+                f"project={project_id}",
+                "activate=off",
+                "billdaily=on",
+                "billhourly=off",
+                "chargestoped=off",
+                "hidden=on",
+                "monthly126=0",
+                "quarterly126=0",
+                "semiannual126=0",
+                "annually126=0",
+                "sok=ok",
+            ])
+            click.echo(f"Pricelist {PLUGIN_NAME} создан")
+        else:
+            click.echo(f"Pricelist {PLUGIN_NAME} уже существует")
+            
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания pricelist: {e}")
+        click.echo(f"Ошибка создания pricelist: {e}")
+
+
+def _edit_prices():
+    click.echo("Редактирование цен...")
+    
+    try:
+        pricelist = _get_pricelist()
+        
+        if not pricelist:
+            click.echo("Pricelist не найден. Создайте его сначала.")
+            return
+        
+        base_price = click.prompt("Введите базовую цену", type=float, default=0.0)
+        
+        mgrctl_exec([
+            "pricelist.edit",
+            f"elid={pricelist['id']}",
+            f"stat126={base_price}",
+            "sok=ok",
+        ])
+        
+        click.echo(f"Цена установлена: {base_price}")
+        
+    except Exception as e:
+        LOGGER.error(f"Ошибка редактирования цен: {e}")
+        click.echo(f"Ошибка редактирования цен: {e}")
+
+
+def _activate_pricelist():
+    """Активация pricelist"""
+    click.echo("Активация pricelist...")
+    
+    try:
+        pricelist = _get_pricelist()
+        
+        if not pricelist:
+            click.echo("Pricelist не найден.")
+            return
+        
+        is_active = pricelist.get("active") == "on"
+        
+        if is_active:
+            click.echo("Pricelist уже активен")
+        else:
+            if click.confirm("Активировать pricelist?"):
+                mgrctl_exec([
+                    "pricelist.resume",
+                    f"elid={pricelist['id']}"
+                ])
+                click.echo("Pricelist активирован")
+            else:
+                click.echo("Активация pricelist пропущена")
+                
+    except Exception as e:
+        LOGGER.error(f"Ошибка активации pricelist: {e}")
+        click.echo(f"Ошибка активации pricelist: {e}") 
 '''
