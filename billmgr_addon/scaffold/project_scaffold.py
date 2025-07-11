@@ -1529,7 +1529,15 @@ def _create_pricelist():
                 "annually126=0",
                 "sok=ok",
             ])
-            click.echo(f"Pricelist {PLUGIN_NAME} создан")
+            
+            import time
+            time.sleep(0.5)
+            pricelist = _get_pricelist()
+            
+            if pricelist:
+                click.echo(f"Pricelist {PLUGIN_NAME} создан (ID: {pricelist['id']})")
+            else:
+                click.echo(f"Pricelist {PLUGIN_NAME} создан, но не найден в БД")
         else:
             click.echo(f"Pricelist {PLUGIN_NAME} уже существует")
             

@@ -42,3 +42,21 @@ class I18nExtension:
 
     def teardown_appcontext_handler(self, error):
         pass
+
+def register_i18n_for_app(i18n_factory: Callable[[str], TranslatorHub]):
+    """
+    Декоратор для регистрации i18n фабрики в Flask приложении.
+    
+    Args:
+        i18n_factory: Функция-фабрика для создания TranslatorHub
+    
+    Returns:
+        Декорированная функция создания приложения
+    """
+    def decorator(create_app_func):
+        def wrapper(*args, **kwargs):
+            app = create_app_func(*args, **kwargs)
+            I18nExtension().init_app(app, i18n_factory)
+            return app
+        return wrapper
+    return decorator
