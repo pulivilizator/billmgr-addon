@@ -54,6 +54,7 @@ class ProjectScaffold:
             self.project_path / "app" / "services", 
             self.project_path / "app" / "blueprints",
             self.project_path / "app" / "blueprints" / "processing_module",
+            self.project_path / "app" / "blueprints" / "cli",
             self.project_path / "xml" / "src",
             self.project_path / "public",
         ]
@@ -93,6 +94,9 @@ class ProjectScaffold:
             "app/blueprints/processing_module/__init__.py": self._get_processing_module_init_template(),
             "app/blueprints/processing_module/features.py": self._get_processing_module_features_template(),
             "processing_module_cli.py": self._get_processing_module_cli_template(),
+            # CLI Blueprint
+            "app/blueprints/cli/__init__.py": self._get_cli_init_template(),
+            "app/blueprints/cli/commands.py": self._get_cli_commands_template(),
             # XML файлы
             "xml/src/main.xml": self._get_main_xml_template(),
             "xml/src/example_list.xml": self._get_example_list_xml_template(),
@@ -200,6 +204,7 @@ from billmgr_addon.core import create_common_app
 from billmgr_addon.utils.logging import setup_logger
 from .endpoints import endpoints
 from .blueprints.processing_module import bp as processing_module_bp
+from .blueprints.cli import bp as cli_bp
 
 def create_cgi_app():
     """Создать CGI приложение"""
@@ -230,7 +235,10 @@ def create_app():
 
 def create_cli_app():
     """Создать CLI приложение"""
-    return create_cli_app_base()
+    app = create_cli_app_base()
+    app.register_blueprint(cli_bp, cli_group=None)
+    app.register_blueprint(processing_module_bp, cli_group="processing_module")
+    return app
 
 def create_processing_module_cli_app():
     """Создать CLI приложение для processing module"""
@@ -809,4 +817,74 @@ def encrypt_value(value: str) -> str:
         raise e
     else:
         return encrypted_value
+'''
+
+    def _get_cli_init_template(self) -> str:
+        return '''# -*- coding: utf-8 -*-
+
+from flask import Blueprint
+import click
+from billmgr_addon import LOGGER, get_db, mgrctl_exec
+from .commands import restart_panel_command, test_command
+
+bp = Blueprint("cli", __name__)
+
+@bp.cli.command("test")
+def test():
+    """Тестовая команда для проверки работы CLI"""
+    test_command()
+
+@bp.cli.command("restart_panel")
+def restart_panel():
+    """Перезапустить панель BILLmanager"""
+    restart_panel_command()
+'''
+
+    def _get_cli_commands_template(self) -> str:
+        return '''# -*- coding: utf-8 -*-
+
+import click
+from billmgr_addon import LOGGER, get_db, mgrctl_exec
+from pathlib import Path
+
+
+def test_command():
+    """Тестовая команда для проверки работы CLI"""
+    click.echo("test started")
+    
+    try:
+        db = get_db("billmgr")
+        row = db.select_query(
+            """
+            SELECT 'testaddon_test' AS test_value
+            """
+        ).one_or_none()
+        click.echo(f"Database test result: {row}")
+        
+        cwd_path = Path.cwd()
+        click.echo(f"Project path: {cwd_path}")
+        click.echo(f"Config file: {cwd_path / 'config.toml'}")
+        
+        LOGGER.info("Test command executed successfully")
+        click.echo("test finished")
+        
+    except Exception as e:
+        LOGGER.error(f"Test command failed: {e}")
+        click.echo(f"test failed: {e}")
+        raise
+
+
+def restart_panel_command():
+    """Перезапустить панель BILLmanager"""
+    click.echo("Restarting BILLmanager panel...")
+    
+    try:
+        mgrctl_exec(["-R"])
+        LOGGER.info("Panel restart command executed successfully")
+        click.echo("Панель BILLmanager перезапущена")
+        
+    except Exception as e:
+        LOGGER.error(f"Failed to restart panel: {e}")
+        click.echo(f"restart_panel failed: {e}")
+        raise
 '''
