@@ -73,6 +73,10 @@ LOGS_PATH = "logs"
 billmgr-addon deploy remote-deploy -e dev/prod --plugin-name PLUGIN_NAME
 ```
 
+### 6. Установка с настойкой processing_module
+Установка происходит в `app/blueprints/cli/installation.py`. Перед установкой стоит ознакомиться с кодом и изменить необходимые параметры.
+
+
 
 ## Структура проекта
 
@@ -328,7 +332,8 @@ class MyHandler(ProcessingModuleHandler):
 ## CLI команды
 
 У всех команд есть флаг `--help`
-Подробнее с командами можно ознакомиться в [deploy.py](./billmgr_addon/cli/deploy.py) и [main.py](./billmgr_addon/cli/main.py)
+
+Вызов команд происходит через `billmgr-addon` либо через `python cli.py`.
 
 ### Создание проекта
 

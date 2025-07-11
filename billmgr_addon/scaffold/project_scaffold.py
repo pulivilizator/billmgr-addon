@@ -885,7 +885,7 @@ def test_command():
         db = get_db("billmgr")
         row = db.select_query(
             """
-            SELECT 'testaddon_test' AS test_value
+            SELECT 'test' AS test_value
             """
         ).one_or_none()
         click.echo(f"Database test result: {row}")
