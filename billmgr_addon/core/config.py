@@ -5,169 +5,60 @@
 """
 
 import os
-import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import tomlkit
 
 
+@lru_cache(maxsize=1)
 def get_project_root() -> Path:
     """
     Определяет корневую директорию проекта.
     """
-    try:
-        current_dir = os.getcwd()
-        if current_dir not in sys.path:
-            sys.path.insert(0, current_dir)
+    env_project_root = os.getenv("BILLMGR_ADDON_PROJECT_ROOT")
+    if env_project_root:
+        return Path(env_project_root).resolve()
 
-        import settings
-
-        if hasattr(settings, "PROJECT_ROOT"):
-            project_root = Path(settings.PROJECT_ROOT)
-            if project_root.is_absolute():
-                return project_root
-            else:
-                return Path(current_dir) / project_root
-
-        settings_file = Path(settings.__file__)
-        return settings_file.parent
-
-    except ImportError:
-        pass
-
-    project_root_env = os.getenv("BILLMGR_ADDON_PROJECT_ROOT")
-    if project_root_env:
-        return Path(project_root_env)
-
-    return Path(os.getcwd())
+    current_path = Path.cwd()
+    while current_path != current_path.parent:
+        if (current_path / "config.toml").exists():
+            return current_path
+        current_path = current_path.parent
+    
+    return Path.cwd()
 
 
+@lru_cache(maxsize=1)
 def get_config_path() -> Path:
     """
     Определяет путь к файлу конфигурации.
-
     """
-    try:
-        current_dir = os.getcwd()
-        if current_dir not in sys.path:
-            sys.path.insert(0, current_dir)
-
-        import settings
-
-        if hasattr(settings, "CONFIG_PATH"):
-            config_path = Path(settings.CONFIG_PATH)
-            if config_path.is_absolute():
-                return config_path
-            else:
-                return get_project_root() / config_path
-
-    except ImportError:
-        pass
-
     return get_project_root() / "config.toml"
 
 
+@lru_cache(maxsize=1)
 def get_public_path() -> Path:
     """
     Определяет путь к директории public.
+    
+    Возвращает директорию public в корневой директории проекта.
     """
-    try:
-        current_dir = os.getcwd()
-        if current_dir not in sys.path:
-            sys.path.insert(0, current_dir)
-
-        import settings
-
-        if hasattr(settings, "PUBLIC_PATH"):
-            public_path = Path(settings.PUBLIC_PATH)
-            if public_path.is_absolute():
-                return public_path
-            else:
-                return get_project_root() / public_path
-
-    except ImportError:
-        pass
-
     return get_project_root() / "public"
 
 
+@lru_cache(maxsize=1)
 def get_logs_path() -> Path:
     """
     Определяет путь к директории logs.
+    
+    Возвращает директорию logs в корневой директории проекта.
     """
-    try:
-        current_dir = os.getcwd()
-        if current_dir not in sys.path:
-            sys.path.insert(0, current_dir)
-
-        import settings
-
-        if hasattr(settings, "LOGS_PATH"):
-            logs_path = Path(settings.LOGS_PATH)
-            if logs_path.is_absolute():
-                return logs_path
-            else:
-                return get_project_root() / logs_path
-
-    except ImportError:
-        pass
-
     return get_project_root() / "logs"
 
 
-_project_root: Optional[Path] = None
-_config_path: Optional[Path] = None
-_public_path: Optional[Path] = None
-_logs_path: Optional[Path] = None
 
-
-def get_project_root_cached() -> Path:
-    """Кешированная версия get_project_root()"""
-    global _project_root
-    if _project_root is None:
-        _project_root = get_project_root()
-    return _project_root
-
-
-def get_config_path_cached() -> Path:
-    """Кешированная версия get_config_path()"""
-    global _config_path
-    if _config_path is None:
-        _config_path = get_config_path()
-    return _config_path
-
-
-def get_public_path_cached() -> Path:
-    """Кешированная версия get_public_path()"""
-    global _public_path
-    if _public_path is None:
-        _public_path = get_public_path()
-    return _public_path
-
-
-def get_logs_path_cached() -> Path:
-    """Кешированная версия get_logs_path()"""
-    global _logs_path
-    if _logs_path is None:
-        _logs_path = get_logs_path()
-    return _logs_path
-
-
-def get_cwd_path():
-    return get_project_root_cached()
-
-
-def get_config_path_global():
-    return get_config_path_cached()
-
-
-def get_public_path_global():
-    return get_public_path_cached()
-
-
-def get_logs_path_global():
-    return get_logs_path_cached()
 
 
 class _LazyPath:
@@ -187,15 +78,15 @@ class _LazyPath:
         return f"LazyPath({self.__fspath__()})"
 
 
-cwd_path = _LazyPath(get_project_root_cached)
-config_path = _LazyPath(get_config_path_cached)
-public_path = _LazyPath(get_public_path_cached)
-logs_path = _LazyPath(get_logs_path_cached)
+cwd_path = _LazyPath(get_project_root)
+config_path = _LazyPath(get_config_path)
+public_path = _LazyPath(get_public_path)
+logs_path = _LazyPath(get_logs_path)
 
 
 def load_config() -> dict:
     """Загружает конфигурацию из файла"""
-    config_file = get_config_path_cached()
+    config_file = get_config_path()
 
     if not config_file.exists():
         return {}
@@ -308,10 +199,6 @@ __all__ = [
     "get_config_path",
     "get_logs_path",
     "get_public_path",
-    "get_project_root_cached",
-    "get_config_path_cached",
-    "get_logs_path_cached",
-    "get_public_path_cached",
     "load_config",
     "cwd_path",
     "config_path",

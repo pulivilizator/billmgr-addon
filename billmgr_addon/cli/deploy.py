@@ -465,7 +465,7 @@ def remote_deploy(
                 f"   ssh {server} 'cd {app_folder} && source venv/bin/activate && sudo billmgr-addon deploy install --plugin-name {plugin_name} --server-app-folder {app_folder} {processing_module_flag}'"
             )
 
-        if not restart_billmgr:
+        if not restart_billmgr and not install:
             click.echo("Для перезапуска BILLmanager выполните:")
             click.echo(f"   ssh {server} '/usr/local/mgr5/sbin/mgrctl -m billmgr exit'")
 

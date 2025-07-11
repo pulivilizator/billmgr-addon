@@ -133,7 +133,6 @@ def create_processing_module_xml_file(
 ) -> Path:
     """
     Создать XML файл описания processing module из файла проекта
-
     """
     xml_file_path = mgr_xml_path.joinpath(f"billmgr_mod_pm{plugin_name}.xml")
     

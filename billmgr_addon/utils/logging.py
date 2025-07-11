@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, Union
 
-from billmgr_addon.core.config import get_logs_path_cached, get_project_root_cached
+from billmgr_addon.core.config import get_logs_path, get_project_root
 
 LOGGER_NAME = "billmgr_addon"
 LOGGER = None
@@ -80,7 +80,7 @@ def setup_logger(
     if enable_file:
         if path is None:
             try:
-                logs_path = get_logs_path_cached()
+                logs_path = get_logs_path()
             except ImportError:
                 base_path = Path.cwd()
                 logs_path = base_path / "logs"
@@ -89,7 +89,7 @@ def setup_logger(
                 logs_path = Path(path)
             else:
                 try:
-                    project_root = get_project_root_cached()
+                    project_root = get_project_root()
                     logs_path = project_root / path
                 except ImportError:
                     logs_path = Path.cwd() / path

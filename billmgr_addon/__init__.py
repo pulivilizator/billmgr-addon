@@ -48,27 +48,13 @@ def _get_request_response_classes():
 
 def _get_processing_module_classes():
     from .core.processing_module import (
-        ProcessingModuleHandler,
         ProcessingModuleResponse,
         FeaturesResponse,
-        create_processing_module_blueprint,
-        get_service_status,
-        set_service_status_active,
-        set_service_status_suspended,
-        set_service_status_resumed,
-        set_service_status_closed,
     )
 
     return {
-        "ProcessingModuleHandler": ProcessingModuleHandler,
         "ProcessingModuleResponse": ProcessingModuleResponse,
         "FeaturesResponse": FeaturesResponse,
-        "create_processing_module_blueprint": create_processing_module_blueprint,
-        "get_service_status": get_service_status,
-        "set_service_status_active": set_service_status_active,
-        "set_service_status_suspended": set_service_status_suspended,
-        "set_service_status_resumed": set_service_status_resumed,
-        "set_service_status_closed": set_service_status_closed,
     }
 
 
@@ -131,15 +117,8 @@ MgrOkResponse = _lazy.MgrOkResponse
 MgrRedirectResponse = _lazy.MgrRedirectResponse
 
 # Processing Module classes
-ProcessingModuleHandler = _lazy.ProcessingModuleHandler
 ProcessingModuleResponse = _lazy.ProcessingModuleResponse
 FeaturesResponse = _lazy.FeaturesResponse
-create_processing_module_blueprint = _lazy.create_processing_module_blueprint
-get_service_status = _lazy.get_service_status
-set_service_status_active = _lazy.set_service_status_active
-set_service_status_suspended = _lazy.set_service_status_suspended
-set_service_status_resumed = _lazy.set_service_status_resumed
-set_service_status_closed = _lazy.set_service_status_closed
 
 
 __all__ = [
@@ -168,15 +147,8 @@ __all__ = [
     "MgrOkResponse",
     "MgrRedirectResponse",
     # Processing Module
-    "ProcessingModuleHandler",
     "ProcessingModuleResponse",
     "FeaturesResponse",
-    "create_processing_module_blueprint",
-    "get_service_status",
-    "set_service_status_active",
-    "set_service_status_suspended",
-    "set_service_status_resumed",
-    "set_service_status_closed",
     # БД
     "get_db",
     "DB",

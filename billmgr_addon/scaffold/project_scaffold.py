@@ -55,6 +55,12 @@ class ProjectScaffold:
             self.project_path / "app" / "blueprints",
             self.project_path / "app" / "blueprints" / "processing_module",
             self.project_path / "app" / "blueprints" / "cli",
+            self.project_path / "app" / "i18n",
+            self.project_path / "app" / "i18n" / "locales",
+            self.project_path / "app" / "i18n" / "locales" / "en",
+            self.project_path / "app" / "i18n" / "locales" / "en" / "LC_MESSAGES",
+            self.project_path / "app" / "i18n" / "locales" / "ru",
+            self.project_path / "app" / "i18n" / "locales" / "ru" / "LC_MESSAGES",
             self.project_path / "xml" / "src",
             self.project_path / "public",
         ]
@@ -98,6 +104,15 @@ class ProjectScaffold:
             "app/blueprints/cli/__init__.py": self._get_cli_init_template(),
             "app/blueprints/cli/commands.py": self._get_cli_commands_template(),
             "app/blueprints/cli/installation.py": self._get_cli_installation_template(),
+            # i18n
+            "app/i18n/__init__.py": "",
+            "app/i18n/base_enum.py": self._get_i18n_base_enum_template(),
+            "app/i18n/factory.py": self._get_i18n_factory_template(),
+            "app/i18n/i18n.py": self._get_i18n_script_template(),
+            "app/i18n/i18n_stub_script.sh": self._get_i18n_stub_script_template(),
+            "app/i18n/stub.pyi": self._get_i18n_stub_template(),
+            "app/i18n/locales/en/LC_MESSAGES/txt.ftl": self._get_i18n_en_locale_template(),
+            "app/i18n/locales/ru/LC_MESSAGES/txt.ftl": self._get_i18n_ru_locale_template(),
             # XML файлы
             "xml/src/main.xml": self._get_main_xml_template(),
             "xml/src/example_list.xml": self._get_example_list_xml_template(),
@@ -106,6 +121,8 @@ class ProjectScaffold:
             "cgi.py": self._get_cgi_template(),
             "cli.py": self._get_cli_template(),
             "build_xml.py": self._get_build_xml_template(),
+            # README
+            "README.md": self._get_readme_template(),
         }
 
     def _get_requirements_template(self) -> str:
@@ -193,20 +210,24 @@ __all__ = ['endpoints']
 """
 Фабрики Flask приложений для ${project_name}
 """
+
 import traceback
 import billmgr_addon
 from billmgr_addon import (
     create_app as create_app_base, 
     create_cgi_app as create_cgi_app_base, 
     create_cli_app as create_cli_app_base,
+    create_processing_module_cli_app as create_processing_module_cli_app_base,
     LOGGER
 )
-from billmgr_addon.core import create_common_app
+from billmgr_addon.core.i18n import register_i18n_for_app
 from billmgr_addon.utils.logging import setup_logger
 from .endpoints import endpoints
 from .blueprints.processing_module import bp as processing_module_bp
 from .blueprints.cli import bp as cli_bp
+from .i18n.factory import i18n_factory
 
+@register_i18n_for_app(i18n_factory)
 def create_cgi_app():
     """Создать CGI приложение"""
     
@@ -234,6 +255,7 @@ def create_app():
     """Создать Flask приложение"""
     return create_app_base(endpoints=endpoints)
 
+@register_i18n_for_app(i18n_factory)
 def create_cli_app():
     """Создать CLI приложение"""
     app = create_cli_app_base()
@@ -241,6 +263,7 @@ def create_cli_app():
     app.register_blueprint(processing_module_bp, cli_group="processing_module")
     return app
 
+@register_i18n_for_app(i18n_factory)
 def create_processing_module_cli_app():
     """Создать CLI приложение для processing module"""
     
@@ -256,16 +279,14 @@ def create_processing_module_cli_app():
     billmgr_addon.LOGGER = logger
     
     try:
-        app = create_common_app()
-        
-        app.register_blueprint(processing_module_bp, cli_group=None)
-        
-        LOGGER.info("Processing module CLI приложение создано успешно")
+        app = create_processing_module_cli_app_base(processing_module_bp, cli_group=None)
         return app
     except Exception as e:
-        LOGGER.error(f"Ошибка создания processing module CLI приложения: {e}")
-        LOGGER.error(f"Traceback: {traceback.format_exc()}")
+        logger.error(f"Ошибка создания processing module CLI приложения: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise
+
+
 
 '''
 
@@ -283,8 +304,12 @@ endpoints = [
     def _get_example_endpoint_template(self) -> str:
         return '''# -*- coding: utf-8 -*-
 
+from typing import TYPE_CHECKING
 from billmgr_addon import LOGGER, ListEndpoint, MgrList, MgrRequest
+from billmgr_addon.core.i18n import TranslatorRunner
 
+if TYPE_CHECKING:
+    from app.i18n.stub import TranslatorRunner
 
 class ExampleList(ListEndpoint):
     """Пример списка"""
@@ -293,9 +318,11 @@ class ExampleList(ListEndpoint):
     async def get(self, mgr_list: MgrList, mgr_request: MgrRequest):
         """Получить данные для списка"""
         LOGGER.info("ExampleList.get() started")
+        i18n: TranslatorRunner = mgr_request.i18n
+        
         sample_data = [
-            {"id": 1, "name": "Элемент 1", "status": "active"},
-            {"id": 2, "name": "Элемент 2", "status": "inactive"},
+            {"id": 1, "name": "{} 1".format(i18n.test.name()), "status": "active"},
+            {"id": 2, "name": "{} 2".format(i18n.test.name()), "status": "inactive"},
         ]
                 
         mgr_list.set_data_rows(sample_data)
@@ -315,6 +342,7 @@ async def get_items() -> List[Dict[str, Any]]:
             {"id": 1, "name": "Элемент 1", "status": "active"},
             {"id": 2, "name": "Элемент 2", "status": "inactive"},
         ]
+
 
 '''
 
@@ -1600,4 +1628,368 @@ def _activate_pricelist():
     except Exception as e:
         LOGGER.error(f"Ошибка активации pricelist: {e}")
         click.echo(f"Ошибка активации pricelist: {e}") 
+'''
+
+    def _get_i18n_base_enum_template(self) -> str:
+        return '''from abc import ABC
+
+
+class I18nValue(ABC):
+    pass
+
+class I18nEnum:
+    def __iter__(self):
+        for name, value in vars(self).items():
+            if isinstance(value, I18nValue) or not name.startswith("_"):
+                yield value
+'''
+
+    def _get_i18n_factory_template(self) -> str:
+        return '''from fluent_compiler.bundle import FluentBundle
+from billmgr_addon.fluentbillmgr import FluentTranslator, TranslatorHub
+
+
+class Language:
+    RU: str = 'ru'
+    EN: str = 'en'
+
+def i18n_factory(project_path: str) -> TranslatorHub:
+    return TranslatorHub(
+        locales_map={Language.RU: (Language.RU, Language.EN), Language.EN: Language.EN},
+        translators=[
+            FluentTranslator(
+                locale=Language.RU,
+                translator=FluentBundle.from_files(
+                    locale=Language.RU,
+                    filenames=[f"{project_path}/app/i18n/locales/ru/LC_MESSAGES/txt.ftl"],
+                ),
+            ),
+            FluentTranslator(
+                locale=Language.EN,
+                translator=FluentBundle.from_files(
+                    locale=Language.EN,
+                    filenames=[f"{project_path}/app/i18n/locales/en/LC_MESSAGES/txt.ftl"],
+                ),
+            ),
+        ],
+        root_locale=Language.RU,
+    )
+
+'''
+
+    def _get_i18n_script_template(self) -> str:
+        return '''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys
+from billmgr_addon.fluentbillmgr.cli import cli
+
+if __name__ == "__main__":
+    if sys.argv[0].endswith("-script.pyw"):
+        sys.argv[0] = sys.argv[0][:-11]
+    elif sys.argv[0].endswith(".exe"):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(cli())
+'''
+
+    def _get_i18n_stub_script_template(self) -> str:
+        return '''#!/usr/bin/env bash
+DIR="$(dirname "$0")"
+export PYTHONPATH="$DIR/../.."
+"$DIR/i18n.py" -ftl "$DIR/locales/en/LC_MESSAGES/txt.ftl" -stub "$DIR/stub.pyi"
+
+'''
+
+    def _get_i18n_stub_template(self) -> str:
+        return '''from typing import Literal
+
+    
+class TranslatorRunner:
+    def get(self, path: str, **kwargs) -> str: ...
+    
+    test: Test
+
+
+class Test:
+    @staticmethod
+    def name() -> Literal["""Test name"""]: ...
+
+
+'''
+
+    def _get_i18n_en_locale_template(self) -> str:
+        return '''test-name = Test name
+'''
+
+    def _get_i18n_ru_locale_template(self) -> str:
+        return '''test-name = Тестовое имя
+'''
+
+    def _get_readme_template(self) -> str:
+        return '''# ${project_name}
+
+## 📋 Требования
+
+- Python 3.8
+- BILLmanager 5
+- MySQL/MariaDB (для работы с БД BILLmanager)
+
+
+## Конфигурация
+
+Скопируйте конфигурационные файлы и настройте их:
+
+```bash
+cp config.example.toml config.toml
+cp deploy.example.toml deploy.toml
+```
+
+Отредактируйте `config.toml`:
+```toml
+DEBUG = false
+FORWARDED_SECRET = 'SECRET_FROM_BILLMGR_CONF'
+BILLMGR_API_URL = 'https://localhost:1500/billmgr'
+BILLMGR_API_USE_INTERFACE = ''
+```
+
+## Установка плагина
+
+```bash
+# Полная установка на сервере
+python cli.py install
+
+# Или поэтапная установка
+python cli.py install_plugin
+```
+
+## CLI Команды
+
+Плагин предоставляет несколько CLI команд для управления:
+
+## Команды системы установки
+
+Полное создание сущностей BILLmanager:
+
+#### CLI команды:
+- `python cli.py install` - **Полная установка** (Plugin + Processing Module + ItemType + Pricelist + Enumerations)
+- `python cli.py install_plugin` - Установка только плагина
+- `python cli.py install_processing_module` - Установка только processing module  
+- `python cli.py check` - Проверка состояния всех компонентов
+- `python cli.py uninstall` - Удаление плагина
+
+#### Что создается при полной установке:
+1. **Plugin** - веб-интерфейс плагина
+2. **Processing Module** - обработчик событий услуг
+3. **ItemType** - тип услуги для биллинга
+4. **Enumerations** - перечисления для параметров
+5. **Pricelist** - прайс-лист с настройками биллинга
+
+### Основные команды
+
+```bash
+# Тестирование работы плагина
+python cli.py test
+
+# Полная установка плагина
+python cli.py install
+
+# Установка только плагина (без processing module)
+python cli.py install_plugin
+
+# Проверка состояния установки
+python cli.py check
+
+# Удаление плагина
+python cli.py uninstall
+
+# Перезапуск панели BILLmanager
+python cli.py restart_panel
+```
+
+### Processing Module команды
+
+```bash
+# Просмотр доступных processing module команд
+python processing_module_cli.py --help
+
+# Выполнение команды processing module
+python processing_module_cli.py <command> [args]
+```
+
+### Команды для работы с переводами
+
+```bash
+# Генерация stub файлов для типизации переводов
+cd app/i18n
+./i18n_stub_script.sh
+
+# Или вручную
+python app/i18n/i18n.py -ftl app/i18n/locales/en/LC_MESSAGES/txt.ftl -stub app/i18n/stub.pyi
+```
+
+#### С командами деплоя можно ознакомиться в описании пакета billmgr-addon
+
+
+## Структура проекта
+
+```
+${project_name}/
+├── app/                          # Основное приложение
+│   ├── __init__.py
+│   ├── app.py                   # Фабрики Flask приложений
+│   ├── endpoints/               # Эндпоинты плагина
+│   │   ├── __init__.py
+│   │   └── example.py
+│   ├── services/                # Бизнес-логика
+│   │   ├── __init__.py
+│   │   ├── billmgr.py          # Работа с API BILLmanager
+│   │   └── example.py
+│   ├── i18n/                    # Система интернационализации
+│   │   ├── __init__.py
+│   │   ├── base_enum.py         # Базовые классы для enum
+│   │   ├── factory.py           # Фабрика для создания i18n
+│   │   ├── i18n.py             # CLI скрипт для работы с переводами
+│   │   ├── i18n_stub_script.sh # Скрипт генерации stub файлов
+│   │   ├── stub.pyi            # Типизация для IDE
+│   │   └── locales/            # Переводы
+│   │       ├── en/LC_MESSAGES/
+│   │       │   └── txt.ftl     # Английские переводы
+│   │       └── ru/LC_MESSAGES/
+│   │           └── txt.ftl     # Русские переводы
+│   └── blueprints/              # Flask blueprints
+│       ├── __init__.py
+│       ├── cli/                 # CLI команды
+│       │   ├── __init__.py
+│       │   ├── commands.py      # Общие команды
+│       │   └── installation.py  # Система установки
+│       └── processing_module/   # Processing module
+│           ├── __init__.py
+│           └── features.py
+├── xml/                         # XML конфигурация
+│   └── src/
+│       ├── main.xml
+│       ├── example_list.xml
+│       └── processing_module.xml
+├── cli.py                       # CLI точка входа
+├── cgi.py                       # CGI точка входа
+├── processing_module_cli.py     # Processing module CLI
+├── build_xml.py                 # Сборка XML файлов
+├── config.toml                  # Конфигурация
+├── deploy.toml                  # Конфигурация развертывания
+└── requirements.txt             # Зависимости
+```
+
+### Логи
+
+Логи плагина сохраняются в:
+- `logs/app.log` - основные логи приложения
+- Логи BILLmanager в `/usr/local/mgr5/var/billmgr.log`
+
+## Разработка
+
+### Добавление новых эндпоинтов
+
+1. Создайте новый файл в `app/endpoints/`
+2. Добавьте эндпоинт в `app/endpoints/__init__.py`
+3. Создайте соответствующий XML файл в `xml/src/`
+4. Пересоберите XML: `python build_xml.py`
+
+### Добавление новых CLI команд
+
+1. Добавьте функцию в `app/blueprints/cli/commands.py`
+2. Зарегистрируйте команду в `app/blueprints/cli/__init__.py`
+
+### Processing Module
+
+Processing module используется для обработки событий услуг в BILLmanager. Команды добавляются в `app/blueprints/processing_module/features.py`.
+
+### Работа с переводами
+
+1. **Добавьте новые ключи в файлы переводов:**
+   ```fluent
+   # app/i18n/locales/ru/LC_MESSAGES/txt.ftl
+   new-feature = Новая функция
+   
+   # app/i18n/locales/en/LC_MESSAGES/txt.ftl
+   new-feature = New feature
+   ```
+
+2. **Обновите stub файлы для типизации:**
+   ```bash
+   cd app/i18n && ./i18n_stub_script.sh
+   ```
+
+3. **Используйте переводы в коде:**
+   ```python
+   feature_name = i18n.new.feature()
+   ```
+
+### Интернационализация и локализация
+
+Проект использует систему интернационализации на основе **Fluent**
+
+#### Файлы переводов
+
+Переводы хранятся в формате Fluent (.ftl). Формат поддерживает параметры, плюрализацию и сложные языковые конструкции:
+
+**app/i18n/locales/ru/LC_MESSAGES/txt.ftl:**
+```fluent
+test-name = Тестовое имя
+user-greeting = Привет, { $name }!
+item-count = У вас { $count ->
+    [one] { $count } элемент
+    [few] { $count } элемента
+   *[other] { $count } элементов
+}
+```
+
+**app/i18n/locales/en/LC_MESSAGES/txt.ftl:**
+```fluent
+test-name = Test name
+user-greeting = Hello, { $name }!
+item-count = You have { $count ->
+    [one] { $count } item
+   *[other] { $count } items
+}
+```
+
+#### Использование в коде
+
+```python
+# В эндпоинтах
+from typing import TYPE_CHECKING
+from billmgr_addon.core.i18n import TranslatorRunner
+
+if TYPE_CHECKING:
+    from app.i18n.stub import TranslatorRunner
+
+class ExampleList(ListEndpoint):
+    async def get(self, mgr_list: MgrList, mgr_request: MgrRequest):
+        i18n: TranslatorRunner = mgr_request.i18n
+        
+        # Использование переводов
+        name = i18n.test.name()  # Типизированный доступ
+        greeting = i18n.get("user-greeting", name="Пользователь")  # С параметрами
+        count_msg = i18n.get("item-count", count=5)  # Плюрализация
+```
+
+#### Добавление новых переводов
+
+1. Добавьте ключи в файлы переводов (`app/i18n/locales/*/LC_MESSAGES/txt.ftl`)
+2. Обновите типизацию:
+   ```bash
+   cd app/i18n
+   ./i18n_stub_script.sh
+   ```
+
+#### Поддерживаемые языки
+
+- **Русский (ru)** - основной язык
+- **Английский (en)** - язык по умолчанию
+
+#### Добавление нового языка
+
+1. Создайте папку: `app/i18n/locales/{lang}/LC_MESSAGES/`
+2. Добавьте файл переводов: `txt.ftl`
+3. Обновите `app/i18n/factory.py`
+
 '''

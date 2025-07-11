@@ -190,51 +190,216 @@ class MyCloudEndpoint(ProjectRequiredEndpoint):
 
 ### Создание Processing Module
 
-1. **Создайте обработчик** (`app/processing_module/handler.py`):
+Processing Module использует архитектуру Flask Blueprint'ов с CLI командами для обработки событий услуг в BILLmanager.
+
+1. **Создайте Blueprint** (`app/blueprints/processing_module/__init__.py`):
 
 ```python
-from typing import Dict, List
-from billmgr_addon import ProcessingModuleHandler, ProcessingModuleResponse, LOGGER
+from flask import Blueprint
+import click
+from billmgr_addon import LOGGER, MgrErrorResponse
+from .features import features_command, open_command, resume_command, suspend_command, close_command, start_command, stop_command, stat_command
 
-class MyServiceProcessingModuleHandler(ProcessingModuleHandler):
-    def get_itemtypes(self) -> List[Dict[str, str]]:
-        return [{"name": "myservice"}]
+bp = Blueprint("processing_module", __name__)
 
-    def get_features(self) -> List[Dict[str, str]]:
-        return [
+@bp.cli.command("execute")
+@click.option("--command", type=str, required=True)
+@click.option("--subcommand", type=str)
+@click.option("--id", "pricelist_id", type=int)
+@click.option("--item", "item_id", type=int)
+@click.option("--module", "module_id", type=int)
+@click.option("--param", type=str)
+@click.option("--value")
+@click.option("--runningoperation")
+@click.option("--level")
+@click.option("--userid", "user_id")
+def execute(command, subcommand, pricelist_id, item_id, module_id, param, value, runningoperation, level, user_id):
+    """Выполнить команду processing module"""
+    commands = {
+        "features": features_command,
+        "open": open_command,
+        "resume": resume_command,
+        "suspend": suspend_command,
+        "close": close_command,
+        "start": start_command,
+        "stop": stop_command,
+        "stat": stat_command,
+    }
+    
+    LOGGER.info(f"Executing processing module command: {command}")
+    LOGGER.debug(f"Command parameters: item_id={item_id}, runningoperation={runningoperation}")
+    
+    command_handler = commands.get(command)
+    if command_handler is None:
+        LOGGER.error(f"Unknown command: {command}")
+        raise click.UsageError(f"Option --command has invalid value '{command}'")
+
+    ctx = click.get_current_context()
+    try:
+        response = command_handler(**ctx.params)
+        LOGGER.info(f"Command {command} executed successfully")
+        click.echo(response)
+    except Exception as e:
+        LOGGER.exception(f"Error executing command {command}: {e}")
+        click.echo(MgrErrorResponse("Unknown processing module error"))
+```
+
+2. **Создайте обработчики команд** (`app/blueprints/processing_module/features.py`):
+
+```python
+import xml.etree.ElementTree as ET
+from billmgr_addon import MgrResponse, ProcessingModuleResponse, LOGGER
+
+class FeaturesResponse(MgrResponse):
+    """Ответ на команду features"""
+    
+    def __init__(self, itemtype_name: str) -> None:
+        super().__init__()
+        
+        itemtypes = [{"name": itemtype_name}]
+        
+        features = [
             {"name": "features"},
             {"name": "open"},
             {"name": "suspend"},
             {"name": "resume"},
             {"name": "close"},
-            {"name": "stat"}
+            {"name": "stat"},
         ]
-
-    def get_params(self) -> List[Dict[str, str]]:
-        return [
-            {"name": "api_url"},
-            {"name": "api_token", "crypted": "yes"}
-        ]
-
-    def open_command(self, item_id=None, runningoperation=None, **kwargs) -> ProcessingModuleResponse:
-        """Активация услуги"""
-        LOGGER.info(f"Opening service {item_id}")
         
-        try:
-            # Логика активации услуги
-            LOGGER.info(f"Service {item_id} opened successfully")
-            return ProcessingModuleResponse("ok")
-        except Exception as e:
-            LOGGER.exception(f"Error opening service {item_id}: {e}")
-            return ProcessingModuleResponse("error")
+        params = [
+            {"name": "api_url"},
+            {"name": "api_token", "crypted": "yes"},
+        ]
+        
+        itemtypes_element = ET.SubElement(self.root, "itemtypes")
+        for itemtype_attributes in itemtypes:
+            ET.SubElement(itemtypes_element, "itemtype", attrib=itemtype_attributes)
+
+        features_element = ET.SubElement(self.root, "features")
+        for feature_attributes in features:
+            ET.SubElement(features_element, "feature", attrib=feature_attributes)
+
+        params_element = ET.SubElement(self.root, "params")
+        for param_attributes in params:
+            ET.SubElement(params_element, "param", attrib=param_attributes)
+
+
+def features_command(**kwargs):
+    """Команда features - возвращает список поддерживаемых типов услуг, команд и параметров"""
+    LOGGER.info("Processing features command")
+    return FeaturesResponse("myservice")
+
+
+def open_command(item_id=None, runningoperation=None, **kwargs):
+    """Команда open - активация услуги"""
+    LOGGER.info(f"Opening service {item_id}")
+    
+    try:
+        # Логика активации услуги
+        # Здесь можно получить настройки API из БД:
+        # from app.services.billmgr import get_myservice_api_credentials
+        # api_url, api_token = get_myservice_api_credentials()
+        
+        LOGGER.info(f"Service {item_id} opened successfully")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error opening service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+
+
+def suspend_command(item_id=None, runningoperation=None, **kwargs):
+    """Команда suspend - приостановка услуги"""
+    LOGGER.info(f"Suspending service {item_id}")
+    
+    try:
+        # Логика приостановки услуги
+        LOGGER.info(f"Service {item_id} suspended successfully")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error suspending service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+
+
+def resume_command(item_id=None, runningoperation=None, **kwargs):
+    """Команда resume - возобновление услуги"""
+    LOGGER.info(f"Resuming service {item_id}")
+    
+    try:
+        # Логика возобновления услуги
+        LOGGER.info(f"Service {item_id} resumed successfully")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error resuming service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+
+
+def close_command(item_id=None, runningoperation=None, **kwargs):
+    """Команда close - закрытие услуги"""
+    LOGGER.info(f"Closing service {item_id}")
+    
+    try:
+        # Логика закрытия услуги
+        LOGGER.info(f"Service {item_id} closed successfully")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error closing service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+
+
+def start_command(item_id=None, runningoperation=None, **kwargs):
+    """Команда start - запуск услуги"""
+    LOGGER.info(f"Starting service {item_id}")
+    
+    try:
+        # Логика запуска услуги
+        LOGGER.info(f"Service {item_id} started successfully")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error starting service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+
+
+def stop_command(item_id=None, runningoperation=None, **kwargs):
+    """Команда stop - остановка услуги"""
+    LOGGER.info(f"Stopping service {item_id}")
+    
+    try:
+        # Логика остановки услуги
+        LOGGER.info(f"Service {item_id} stopped successfully")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error stopping service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+
+
+def stat_command(module_id=None, **kwargs):
+    """Команда stat - сбор статистики"""
+    LOGGER.info(f"Collecting stats for module {module_id}")
+    
+    try:
+        # Логика сбора статистики
+        LOGGER.info(f"Stats collected successfully for module {module_id}")
+        return ProcessingModuleResponse("ok")
+        
+    except Exception as e:
+        LOGGER.exception(f"Error collecting stats for module {module_id}: {e}")
+        return ProcessingModuleResponse("error")
 ```
 
-2. **Создайте CLI приложение** (`app/app.py`):
+3. **Интегрируйте в приложение** (`app/app.py`):
 
 ```python
-from billmgr_addon import create_processing_module_cli_app, create_processing_module_blueprint, LOGGER
+import billmgr_addon
+from billmgr_addon.core import create_common_app
 from billmgr_addon.utils.logging import setup_logger
-from .processing_module.handler import MyServiceProcessingModuleHandler
+from .blueprints.processing_module import bp as processing_module_bp
 
 def create_processing_module_cli_app():
     """Создать CLI приложение для processing module"""
@@ -251,19 +416,29 @@ def create_processing_module_cli_app():
     
     billmgr_addon.LOGGER = logger
     
-    handler = MyServiceProcessingModuleHandler()
-    blueprint = create_processing_module_blueprint(handler)
-    
-    app = create_processing_module_cli_app(blueprint)
-    LOGGER.info("Processing module CLI приложение создано успешно")
-    return app
+    try:
+        app = create_common_app()
+        app.register_blueprint(processing_module_bp, cli_group=None)
+        
+        LOGGER.info("Processing module CLI приложение создано успешно")
+        return app
+    except Exception as e:
+        LOGGER.error(f"Ошибка создания processing module CLI приложения: {e}")
+        raise
 ```
 
-3. **Создайте CLI точку входа** (`processing_module_cli.py`):
+4. **Создайте CLI точку входа** (`processing_module_cli.py`):
 
 ```python
 #!/usr/bin/env python
-from app import create_processing_module_cli_app
+# -*- coding: utf-8 -*-
+
+"""
+CLI точка входа для Processing Module
+Этот файл вызывается BILLmanager при обработке событий услуг
+"""
+
+from app.app import create_processing_module_cli_app
 
 if __name__ == "__main__":
     app = create_processing_module_cli_app()
@@ -271,31 +446,61 @@ if __name__ == "__main__":
         app.cli.commands['execute']()
 ```
 
-4. **Создайте XML конфигурацию** (`xml/src/processing_module.xml`):
+5. **Создайте XML конфигурацию** (`xml/src/processing_module.xml`):
 
 ```xml
 <?xml version='1.0' encoding="UTF-8"?>
 <mgrdata>
     <plugin name="pmmyservice">
         <group>processing_module</group>
+        <author>Your Company</author>
         <params>
             <type name="myservice"/>
         </params>
+        <msg name="desc_short" lang="ru">Мой сервис</msg>
+        <msg name="desc_short" lang="en">My Service</msg>
+        <msg name="desc_full" lang="ru">Модуль обработки для моего сервиса</msg>
+        <msg name="desc_full" lang="en">Processing module for my service</msg>
     </plugin>
     
     <metadata name="processing.edit.pmmyservice" type="form">
         <form title="name">
             <page name="connect">
                 <field name="api_url">
-                    <input type="text" name="api_url" required="yes"/>
+                    <input type="text" name="api_url" check="url" required="no" maxlength="256"/>
+                </field>
+                <field name="api_token">
+                    <input type="text" name="api_token" required="no" maxlength="256"/>
                 </field>
             </page>
         </form>
     </metadata>
+    
+    <lang name="ru">
+        <messages name="processing.edit.pmmyservice">
+            <msg name="api_url">URL API</msg>
+            <msg name="api_token">Токен API</msg>
+        </messages>
+        <messages name="label_processing_modules">
+            <msg name="pmmyservice">Мой сервис</msg>
+            <msg name="module_pmmyservice">Мой сервис</msg>
+        </messages>
+    </lang>
+    
+    <lang name="en">
+        <messages name="processing.edit.pmmyservice">
+            <msg name="api_url">API URL</msg>
+            <msg name="api_token">API Token</msg>
+        </messages>
+        <messages name="label_processing_modules">
+            <msg name="pmmyservice">My Service</msg>
+            <msg name="module_pmmyservice">My Service</msg>
+        </messages>
+    </lang>
 </mgrdata>
 ```
 
-5. **Добавьте импорт в main.xml**:
+6. **Добавьте импорт в main.xml**:
 
 ```xml
 <import path="processing_module.xml"/>
@@ -308,25 +513,95 @@ Processing Module использует глобальный `LOGGER` из `billm
 ```python
 from billmgr_addon import LOGGER
 
-class MyHandler(ProcessingModuleHandler):
-    def open_command(self, item_id=None, **kwargs):
-        # Информационные сообщения
-        LOGGER.info(f"Starting service activation for item {item_id}")
+def open_command(item_id=None, runningoperation=None, **kwargs):
+    # Информационные сообщения
+    LOGGER.info(f"Starting service activation for item {item_id}")
+    
+    # Отладочная информация
+    LOGGER.debug(f"Command parameters: {kwargs}")
+    
+    try:
+        # Логика обработки
+        # Получение настроек из БД
+        from app.services.billmgr import get_myservice_api_credentials
+        api_url, api_token = get_myservice_api_credentials()
         
-        # Отладочная информация
-        LOGGER.debug(f"Command parameters: {kwargs}")
+        # Ваша бизнес-логика
+        pass
         
-        try:
-            # Логика обработки
-            pass
-        except Exception as e:
-            # Логгирование ошибок с полным стеком
-            LOGGER.exception(f"Failed to activate service {item_id}: {e}")
-            return ProcessingModuleResponse("error")
-        
-        LOGGER.info(f"Service {item_id} activated successfully")
-        return ProcessingModuleResponse("ok")
+    except Exception as e:
+        # Логгирование ошибок с полным стеком
+        LOGGER.exception(f"Failed to activate service {item_id}: {e}")
+        return ProcessingModuleResponse("error")
+    
+    LOGGER.info(f"Service {item_id} activated successfully")
+    return ProcessingModuleResponse("ok")
 ```
+
+### Получение настроек Processing Module
+
+Создайте функцию для получения настроек модуля (`app/services/billmgr.py`):
+
+```python
+from billmgr_addon import get_db, LOGGER
+from flask import current_app
+import base64
+from Crypto.Cipher import PKCS1_v1_5
+
+def get_myservice_api_credentials() -> tuple:
+    """Получает настройки API для processing module pmmyservice из БД BILLmanager"""
+    db = get_db('billmgr')
+
+    # Получение обычного параметра
+    api_url_result = db.select_query(
+        """
+            SELECT pp.*
+            FROM processingparam pp
+            JOIN processingmodule pm
+                ON pm.id = pp.processingmodule
+                AND pm.module = 'pmmyservice'
+            WHERE pp.intname = 'api_url'
+        """).one_or_none()
+
+    api_url = api_url_result['value'] if api_url_result else None
+
+    # Получение зашифрованного параметра
+    api_token_result = db.select_query(
+        """
+            SELECT pp.*
+            FROM processingcryptedparam pp
+            JOIN processingmodule pm
+                ON pm.id = pp.processingmodule
+                AND pm.module = 'pmmyservice'
+            WHERE pp.intname = 'api_token'
+        """).one_or_none()
+
+    api_token_encrypted = api_token_result['value'] if api_token_result else None
+    api_token = None
+
+    if api_token_encrypted:
+        try:
+            api_token = decrypt_value(api_token_encrypted)
+        except Exception as e:
+            LOGGER.error(f"Failed to decrypt api_token: {e}")
+            api_token = None
+
+    LOGGER.info(f"Loaded API credentials: url={api_url}, token={'***' if api_token else 'None'}")
+    return api_url, api_token
+
+def decrypt_value(encrypted_value: str) -> str:
+    """Расшифровать значение, зашифрованное BILLmanager"""
+    encryption_key = current_app.mgr_encryption_key
+    try:
+        cipher = PKCS1_v1_5.new(encryption_key)
+        encrypt_byte = base64.b64decode(encrypted_value.encode())
+        decrypt_byte = cipher.decrypt(encrypt_byte, b'failure')
+        value = decrypt_byte.decode()
+    except ValueError as e:
+        LOGGER.error(f"Failed to decrypt the value: {e}", exc_info=e)
+        raise e
+    else:
+        return value
 ```
 
 ## CLI команды
