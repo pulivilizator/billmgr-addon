@@ -1815,6 +1815,12 @@ python processing_module_cli.py --help
 python processing_module_cli.py <command> [args]
 ```
 
+или
+
+```bash
+python cli.py processing_module <command>
+```
+
 ### Команды для работы с переводами
 
 ```bash
